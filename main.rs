@@ -1,5 +1,7 @@
 use gst::prelude::*;
 
+use log::info;
+
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -82,13 +84,13 @@ impl State {
             ..Default::default()
         };
 
-        println!("Writing master manifest to {}", self.path.display());
 
         let mut file = std::fs::File::create(&self.path).unwrap();
         playlist
             .write_to(&mut file)
             .expect("Failed to write master playlist");
 
+        info!("wrote master manifest to {}", self.path.display());
         self.wrote_manifest = true;
     }
 }
@@ -154,7 +156,7 @@ fn trim_segments(state: &mut StreamState) {
 
             let mut path = state.path.clone();
             path.push(segment.path);
-            println!("Removing {}", path.display());
+            info!("deleting {}", path.display());
             std::fs::remove_file(path).expect("Failed to remove old segment");
         } else {
             break;
@@ -167,8 +169,7 @@ fn update_manifest(state: &mut StreamState) {
     let mut path = state.path.clone();
     path.push("manifest.m3u8");
 
-    println!("writing manifest to {}", path.display());
-
+    info!("writing manifest to {}", path.display());
     trim_segments(state);
 
     let playlist = MediaPlaylist {
@@ -251,7 +252,7 @@ fn setup_appsink(appsink: &gst_app::AppSink, name: &str, path: &Path) {
                     std::fs::create_dir_all(&path).expect("failed to create directory");
                     path.push("init.mp4");
 
-                    println!("writing header to {}", path.display());
+                    info!("writing header to {}", path.display());
                     let map = first.map_readable().unwrap();
                     std::fs::write(path, &map).expect("failed to write header");
                     drop(map);
@@ -327,7 +328,7 @@ fn setup_appsink(appsink: &gst_app::AppSink, name: &str, path: &Path) {
                     ))
                     .unwrap();
 
-                println!(
+                info!(
                     "wrote segment with date time {} to {}",
                     date_time,
                     path.display()
@@ -474,6 +475,7 @@ impl AudioStream {
 
 fn main() -> Result<(), Error> {
     gst::init()?;
+    env_logger::init();
 
     let path = PathBuf::from("hls_live_stream");
     let pipeline = gst::Pipeline::default();
