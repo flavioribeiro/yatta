@@ -475,12 +475,8 @@ impl AudioStream {
 fn main() -> Result<(), Error> {
     gst::init()?;
 
-//    gstfmp4::plugin_register_static()?;
-
     let path = PathBuf::from("hls_live_stream");
-
     let pipeline = gst::Pipeline::default();
-
     std::fs::create_dir_all(&path).expect("failed to create directory");
 
     let mut manifest_path = path.clone();
