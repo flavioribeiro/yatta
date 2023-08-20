@@ -183,10 +183,14 @@ fn update_manifest(state: &mut StreamState) {
                 uri: segment.path.to_string(),
                 duration: (segment.duration.nseconds() as f64
                     / gst::ClockTime::SECOND.nseconds() as f64) as f32,
-                map: Some(m3u8_rs::Map {
-                    uri: "init.mp4".into(),
-                    ..Default::default()
-                }),
+                map: if idx == 0 {
+                    Some(m3u8_rs::Map {
+                        uri: "init.mp4".into(),
+                        ..Default::default()
+                    })
+                } else {
+                    None
+                },
                 program_date_time: if idx == 0 {
                     Some(segment.date_time.into())
                 } else {
@@ -452,7 +456,7 @@ impl AudioStream {
         let mux = gst::ElementFactory::make("cmafmux")
             .property_from_str("header-update-mode", "update")
             .property("write-mehd", true)
-            .property("fragment-duration", 2500.mseconds())
+            .property("fragment-duration", 2000.mseconds())
             .build()?;
         let appsink = gst_app::AppSink::builder().buffer_list(true).build();
 
