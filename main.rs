@@ -378,10 +378,17 @@ impl VideoStream {
         pipeline: &gst::Pipeline,
         path: &Path,
     ) -> Result<(), Error> {
-        let src = gst::ElementFactory::make("videotestsrc")
-            .property("is-live", true)
+
+        // gst-launch-1.0 srtsrc uri="srt://52.6.207.55:9001" latency=200 ! decodebin ! x264enc ! avdec_h264 ! videoconvert ! autovideosink
+//        https://github.com/JakWai01/rusant/blob/113403acef41d18285b58ac69244d7f8f7ae275e/src/receiver/mod.rs#L148
+        // https://stackoverflow.com/questions/58105444/gstreamer-1-16-0-problem-linking-tsdemux-to-h264parse
+        let src = gst::ElementFactory::make("srtsrc")
+            .property("uri", "srt://52.6.207.55:9001")
+            .property("latency", 200)
             .build()?;
 
+        let queue = gst::ElementFactory::make("queue").build()?;
+        let decodebin = gst::ElementFactory::make("decodebin").build()?;
         let raw_capsfilter = gst::ElementFactory::make("capsfilter")
             .property(
                 "caps",
@@ -393,12 +400,14 @@ impl VideoStream {
                     .build(),
             )
             .build()?;
+
         let timeoverlay = gst::ElementFactory::make("timeoverlay").build()?;
         let enc = gst::ElementFactory::make("x264enc")
             .property("bframes", 0u32)
             .property("bitrate", self.bitrate as u32 / 1000u32)
             .property_from_str("tune", "zerolatency")
             .build()?;
+
         let h264_capsfilter = gst::ElementFactory::make("capsfilter")
             .property(
                 "caps",
@@ -407,6 +416,7 @@ impl VideoStream {
                     .build(),
             )
             .build()?;
+
         let mux = gst::ElementFactory::make("cmafmux")
             .property("fragment-duration", 2000.mseconds())
             .property_from_str("header-update-mode", "update")
@@ -416,6 +426,8 @@ impl VideoStream {
 
         pipeline.add_many([
             &src,
+            &queue,
+            &decodebin,
             &raw_capsfilter,
             &timeoverlay,
             &enc,
@@ -426,6 +438,11 @@ impl VideoStream {
 
         gst::Element::link_many([
             &src,
+            &queue,
+            &decodebin,
+        ])?;
+
+        gst::Element::link_many([
             &raw_capsfilter,
             &timeoverlay,
             &enc,
@@ -433,6 +450,11 @@ impl VideoStream {
             &mux,
             appsink.upcast_ref(),
         ])?;
+
+        decodebin.connect_pad_added(move |_dbin, src_pad| {
+            info!("new pad on decodebin");
+            timeoverlay.link(&src_pad).unwrap();
+        });
 
         probe_encoder(state, enc);
 
