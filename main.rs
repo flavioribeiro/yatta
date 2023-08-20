@@ -1,14 +1,3 @@
-// Copyright (C) 2022 Mathieu Duponchelle <mathieu@centricular.com>
-//
-// This Source Code Form is subject to the terms of the Mozilla Public License, v2.0.
-// If a copy of the MPL was not distributed with this file, You can obtain one at
-// <https://mozilla.org/MPL/2.0/>.
-//
-// SPDX-License-Identifier: MPL-2.0
-
-// This creates a live HLS stream with one video playlist and two video playlists.
-// Basic trimming is implemented
-
 use gst::prelude::*;
 
 use std::collections::VecDeque;
@@ -184,7 +173,7 @@ fn update_manifest(state: &mut StreamState) {
 
     let playlist = MediaPlaylist {
         version: Some(7),
-        target_duration: 2.5,
+        target_duration: 2.0,
         media_sequence: state.media_sequence,
         segments: state
             .segments
@@ -195,7 +184,7 @@ fn update_manifest(state: &mut StreamState) {
                 duration: (segment.duration.nseconds() as f64
                     / gst::ClockTime::SECOND.nseconds() as f64) as f32,
                 map: Some(m3u8_rs::Map {
-                    uri: "init.cmfi".into(),
+                    uri: "init.mp4".into(),
                     ..Default::default()
                 }),
                 program_date_time: if idx == 0 {
@@ -220,7 +209,7 @@ fn update_manifest(state: &mut StreamState) {
         .expect("Failed to write media playlist");
 }
 
-fn setup_appsink(appsink: &gst_app::AppSink, name: &str, path: &Path, is_video: bool) {
+fn setup_appsink(appsink: &gst_app::AppSink, name: &str, path: &Path) {
     let mut path: PathBuf = path.into();
     path.push(name);
 
@@ -253,13 +242,10 @@ fn setup_appsink(appsink: &gst_app::AppSink, name: &str, path: &Path, is_video: 
                 // header, i.e. the `ftyp`, `moov` and other media boxes.
                 //
                 // This might be the initial header or the updated header at the end of the stream.
-                if first
-                    .flags()
-                    .contains(gst::BufferFlags::DISCONT | gst::BufferFlags::HEADER)
-                {
+                if first.flags().contains(gst::BufferFlags::DISCONT | gst::BufferFlags::HEADER) {
                     let mut path = state.path.clone();
                     std::fs::create_dir_all(&path).expect("failed to create directory");
-                    path.push("init.cmfi");
+                    path.push("init.mp4");
 
                     println!("writing header to {}", path.display());
                     let map = first.map_readable().unwrap();
@@ -285,9 +271,7 @@ fn setup_appsink(appsink: &gst_app::AppSink, name: &str, path: &Path, is_video: 
 
                 let mut path = state.path.clone();
                 let basename = format!(
-                    "segment_{}.{}",
-                    state.segment_index,
-                    if is_video { "cmfv" } else { "cmfa" }
+                    "segment_{}.fmp4", state.segment_index
                 );
                 state.segment_index += 1;
                 path.push(&basename);
@@ -419,7 +403,7 @@ impl VideoStream {
             )
             .build()?;
         let mux = gst::ElementFactory::make("cmafmux")
-            .property("fragment-duration", 2500.mseconds())
+            .property("fragment-duration", 2000.mseconds())
             .property_from_str("header-update-mode", "update")
             .property("write-mehd", true)
             .build()?;
@@ -447,7 +431,7 @@ impl VideoStream {
 
         probe_encoder(state, enc);
 
-        setup_appsink(&appsink, &self.name, path, true);
+        setup_appsink(&appsink, &self.name, path);
 
         Ok(())
     }
@@ -478,7 +462,7 @@ impl AudioStream {
 
         probe_encoder(state, enc);
 
-        setup_appsink(&appsink, &self.name, path, false);
+        setup_appsink(&appsink, &self.name, path);
 
         Ok(())
     }
