@@ -12,7 +12,7 @@ use log::info;
 
 use crate::{Segment, StreamState, UnreffedSegment};
 
-pub(crate) fn setup_hlscmaf(appsink: &gst_app::AppSink, name: &str, path: &Path) {
+pub(crate) fn setup(appsink: &gst_app::AppSink, name: &str, path: &Path) {
     let mut path: PathBuf = path.into();
     path.push(name);
 

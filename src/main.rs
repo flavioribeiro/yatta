@@ -1,5 +1,4 @@
 use gst::prelude::*;
-use hlscmaf::setup_hlscmaf;
 use log::info;
 
 use std::collections::VecDeque;
@@ -213,7 +212,7 @@ impl VideoStream {
 
         probe_encoder(state, enc);
 
-        setup_hlscmaf(&appsink, &self.name, path);
+        hlscmaf::setup(&appsink, &self.name, path);
 
         Ok(())
     }
@@ -244,7 +243,7 @@ impl AudioStream {
 
         probe_encoder(state, enc);
 
-        setup_hlscmaf(&appsink, &self.name, path);
+        hlscmaf::setup(&appsink, &self.name, path);
 
         Ok(())
     }
