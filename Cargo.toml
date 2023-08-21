@@ -6,7 +6,7 @@ rust-version = "1.70"
 
 [[bin]]
 name = "gesha"
-path = "./main.rs"
+path = "./src/main.rs"
 
 [dependencies]
 anyhow = "1"

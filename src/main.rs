@@ -84,7 +84,6 @@ impl State {
             ..Default::default()
         };
 
-
         let mut file = std::fs::File::create(&self.path).unwrap();
         playlist
             .write_to(&mut file)
@@ -247,7 +246,10 @@ fn setup_appsink(appsink: &gst_app::AppSink, name: &str, path: &Path) {
                 // header, i.e. the `ftyp`, `moov` and other media boxes.
                 //
                 // This might be the initial header or the updated header at the end of the stream.
-                if first.flags().contains(gst::BufferFlags::DISCONT | gst::BufferFlags::HEADER) {
+                if first
+                    .flags()
+                    .contains(gst::BufferFlags::DISCONT | gst::BufferFlags::HEADER)
+                {
                     let mut path = state.path.clone();
                     std::fs::create_dir_all(&path).expect("failed to create directory");
                     path.push("init.mp4");
@@ -275,9 +277,7 @@ fn setup_appsink(appsink: &gst_app::AppSink, name: &str, path: &Path) {
                 assert!(first.flags().contains(gst::BufferFlags::HEADER));
 
                 let mut path = state.path.clone();
-                let basename = format!(
-                    "segment_{}.fmp4", state.segment_index
-                );
+                let basename = format!("segment_{}.fmp4", state.segment_index);
                 state.segment_index += 1;
                 path.push(&basename);
 
