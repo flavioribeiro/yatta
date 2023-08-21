@@ -394,15 +394,16 @@ impl VideoStream {
             )
             .build()?;
         let timeoverlay = gst::ElementFactory::make("timeoverlay").build()?;
-        let enc = gst::ElementFactory::make("x264enc")
-            .property("bframes", 0u32)
+        let enc = gst::ElementFactory::make("x265enc")
             .property("bitrate", self.bitrate as u32 / 1000u32)
             .property_from_str("tune", "zerolatency")
             .build()?;
-        let h264_capsfilter = gst::ElementFactory::make("capsfilter")
+
+        let parser = gst::ElementFactory::make("h265parse").build()?;
+        let h265_capsfilter = gst::ElementFactory::make("capsfilter")
             .property(
                 "caps",
-                gst::Caps::builder("video/x-h264")
+                gst::Caps::builder("video/x-h265")
                     .field("profile", "main")
                     .build(),
             )
@@ -419,7 +420,8 @@ impl VideoStream {
             &raw_capsfilter,
             &timeoverlay,
             &enc,
-            &h264_capsfilter,
+            &parser,
+            &h265_capsfilter,
             &mux,
             appsink.upcast_ref(),
         ])?;
@@ -429,7 +431,8 @@ impl VideoStream {
             &raw_capsfilter,
             &timeoverlay,
             &enc,
-            &h264_capsfilter,
+            &parser,
+            &h265_capsfilter,
             &mux,
             appsink.upcast_ref(),
         ])?;
