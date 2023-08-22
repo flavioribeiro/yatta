@@ -14,7 +14,7 @@ pub(crate) fn probe_encoder(state: Arc<Mutex<State>>, enc: gst::Element) {
 
                     let mut state = state.lock().unwrap();
                     state.all_mimes.push(mime.unwrap().into());
-                    state.maybe_write_manifest();
+                    state.try_write_manifest();
                     gst::PadProbeReturn::Remove
                 }
                 _ => gst::PadProbeReturn::Ok,

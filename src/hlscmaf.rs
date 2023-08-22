@@ -6,11 +6,22 @@ use std::{
 
 use m3u8_rs::{MediaPlaylist, MediaSegment};
 
-use chrono::{Duration, Utc};
+use chrono::{Duration, Utc, DateTime};
 use gst::prelude::*;
 use log::info;
 
-use crate::{Segment, StreamState, UnreffedSegment};
+use crate::{Segment, UnreffedSegment};
+
+struct StreamState {
+    path: PathBuf,
+    segments: VecDeque<Segment>,
+    trimmed_segments: VecDeque<UnreffedSegment>,
+    start_date_time: Option<DateTime<Utc>>,
+    start_time: Option<gst::ClockTime>,
+    media_sequence: u64,
+    segment_index: u32,
+}
+
 
 pub(crate) fn setup(appsink: &gst_app::AppSink, name: &str, path: &Path) {
     let mut path: PathBuf = path.into();

@@ -1,7 +1,6 @@
 use gst::prelude::*;
 use log::info;
 
-use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -21,15 +20,20 @@ struct State {
 }
 
 impl State {
-    fn maybe_write_manifest(&mut self) {
+    fn try_write_manifest(&mut self) {
         if self.wrote_manifest {
             return;
         }
 
         if self.all_mimes.len() < self.video_streams.len() + self.audio_streams.len() {
+            info!("not all streams have been setup yet {}, {}, {}", self.all_mimes.len(), self.video_streams.len(), self.audio_streams.len());
             return;
         }
 
+        self.write_manifest()
+    }
+
+    fn write_manifest(&mut self) {
         let mut all_mimes = self.all_mimes.clone();
         all_mimes.sort();
         all_mimes.dedup();
@@ -102,16 +106,6 @@ struct Segment {
 struct UnreffedSegment {
     removal_time: DateTime<Utc>,
     path: String,
-}
-
-struct StreamState {
-    path: PathBuf,
-    segments: VecDeque<Segment>,
-    trimmed_segments: VecDeque<UnreffedSegment>,
-    start_date_time: Option<DateTime<Utc>>,
-    start_time: Option<gst::ClockTime>,
-    media_sequence: u64,
-    segment_index: u32,
 }
 
 struct VideoStream {
