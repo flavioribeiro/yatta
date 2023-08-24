@@ -1,7 +1,7 @@
 use gst::prelude::*;
 use log::info;
 
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 use std::sync::{Arc, Mutex};
 
 use anyhow::Error;
@@ -10,10 +10,12 @@ use m3u8_rs::{AlternativeMedia, AlternativeMediaType, MasterPlaylist, VariantStr
 
 mod hlscmaf;
 mod utils;
+mod video;
+mod audio;
 
 struct State {
-    video_streams: Vec<VideoStream>,
-    audio_streams: Vec<AudioStream>,
+    video_streams: Vec<video::VideoStream>,
+    audio_streams: Vec<audio::AudioStream>,
     all_mimes: Vec<String>,
     path: PathBuf,
     wrote_manifest: bool,
@@ -108,122 +110,6 @@ struct UnreffedSegment {
     path: String,
 }
 
-struct VideoStream {
-    name: String,
-    bitrate: u64,
-    width: u64,
-    height: u64,
-}
-
-struct AudioStream {
-    name: String,
-    lang: String,
-    default: bool,
-    wave: String,
-}
-
-impl VideoStream {
-    fn setup(
-        &self,
-        state: Arc<Mutex<State>>,
-        pipeline: &gst::Pipeline,
-        path: &Path,
-    ) -> Result<(), Error> {
-        let src = gst::ElementFactory::make("videotestsrc")
-            .property("is-live", true)
-            .build()?;
-
-        let raw_capsfilter = gst::ElementFactory::make("capsfilter")
-            .property(
-                "caps",
-                gst_video::VideoCapsBuilder::new()
-                    .format(gst_video::VideoFormat::I420)
-                    .width(self.width as i32)
-                    .height(self.height as i32)
-                    .framerate(30.into())
-                    .build(),
-            )
-            .build()?;
-        let timeoverlay = gst::ElementFactory::make("timeoverlay").build()?;
-        let enc = gst::ElementFactory::make("x264enc")
-            .property("bframes", 0u32)
-            .property("bitrate", self.bitrate as u32 / 1000u32)
-            .property_from_str("tune", "zerolatency")
-            .build()?;
-        let h264_capsfilter = gst::ElementFactory::make("capsfilter")
-            .property(
-                "caps",
-                gst::Caps::builder("video/x-h264")
-                    .field("profile", "main")
-                    .build(),
-            )
-            .build()?;
-        let mux = gst::ElementFactory::make("cmafmux")
-            .property("fragment-duration", 2000.mseconds())
-            .property_from_str("header-update-mode", "update")
-            .property("write-mehd", true)
-            .build()?;
-        let appsink = gst_app::AppSink::builder().buffer_list(true).build();
-
-        pipeline.add_many([
-            &src,
-            &raw_capsfilter,
-            &timeoverlay,
-            &enc,
-            &h264_capsfilter,
-            &mux,
-            appsink.upcast_ref(),
-        ])?;
-
-        gst::Element::link_many([
-            &src,
-            &raw_capsfilter,
-            &timeoverlay,
-            &enc,
-            &h264_capsfilter,
-            &mux,
-            appsink.upcast_ref(),
-        ])?;
-
-        utils::probe_encoder(state, enc);
-
-        hlscmaf::setup(&appsink, &self.name, path);
-
-        Ok(())
-    }
-}
-
-impl AudioStream {
-    fn setup(
-        &self,
-        state: Arc<Mutex<State>>,
-        pipeline: &gst::Pipeline,
-        path: &Path,
-    ) -> Result<(), Error> {
-        let src = gst::ElementFactory::make("audiotestsrc")
-            .property("is-live", true)
-            .property_from_str("wave", &self.wave)
-            .build()?;
-        let enc = gst::ElementFactory::make("avenc_aac").build()?;
-        let mux = gst::ElementFactory::make("cmafmux")
-            .property_from_str("header-update-mode", "update")
-            .property("write-mehd", true)
-            .property("fragment-duration", 2000.mseconds())
-            .build()?;
-        let appsink = gst_app::AppSink::builder().buffer_list(true).build();
-
-        pipeline.add_many([&src, &enc, &mux, appsink.upcast_ref()])?;
-
-        gst::Element::link_many([&src, &enc, &mux, appsink.upcast_ref()])?;
-
-        utils::probe_encoder(state, enc);
-
-        hlscmaf::setup(&appsink, &self.name, path);
-
-        Ok(())
-    }
-}
-
 fn main() -> Result<(), Error> {
     gst::init()?;
     env_logger::init();
@@ -236,20 +122,20 @@ fn main() -> Result<(), Error> {
     manifest_path.push("manifest.m3u8");
 
     let state = Arc::new(Mutex::new(State {
-        video_streams: vec![VideoStream {
+        video_streams: vec![video::VideoStream {
             name: "video_0".to_string(),
             bitrate: 2_048_000,
             width: 1280,
             height: 720,
         }],
         audio_streams: vec![
-            AudioStream {
+            audio::AudioStream {
                 name: "audio_0".to_string(),
                 lang: "eng".to_string(),
                 default: true,
                 wave: "sine".to_string(),
             },
-            AudioStream {
+            audio::AudioStream {
                 name: "audio_1".to_string(),
                 lang: "fre".to_string(),
                 default: false,
