@@ -35,7 +35,7 @@ impl AudioStream {
 
         gst::Element::link_many([&src, &enc, &mux, appsink.upcast_ref()])?;
 
-        utils::probe_encoder(state, enc);
+        utils::probe_encoder(state, enc, self.name.clone());
 
         hlscmaf::setup(&appsink, &self.name, path);
 

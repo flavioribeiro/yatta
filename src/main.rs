@@ -1,6 +1,7 @@
 use gst::prelude::*;
 use log::info;
 
+use std::collections::HashMap;
 use std::path::{PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -15,7 +16,7 @@ mod audio;
 struct State {
     video_streams: Vec<video::VideoStream>,
     audio_streams: Vec<audio::AudioStream>,
-    all_mimes: Vec<String>,
+    all_mimes: HashMap<String, String>,
     path: PathBuf,
     wrote_manifest: bool,
 }
@@ -34,10 +35,12 @@ impl State {
     }
 
     fn write_manifest(&mut self) {
-        let mut all_mimes = self.all_mimes.clone();
-        all_mimes.sort();
-        all_mimes.dedup();
+        // let mut all_mimes = self.all_mimes.clone();
+        // all_mimes.sort();
+        // all_mimes.dedup();
 
+
+        info!("MIMES: {:?}", self.all_mimes);
         let playlist = MasterPlaylist {
             version: Some(7),
             variants: self
@@ -52,7 +55,7 @@ impl State {
                     VariantStream {
                         uri: path.as_path().display().to_string(),
                         bandwidth: stream.bitrate,
-                        codecs: Some(all_mimes.join(",")),
+                        codecs: self.all_mimes.get(&stream.name).map(|s| s.to_string()),
                         resolution: Some(m3u8_rs::Resolution {
                             width: stream.width,
                             height: stream.height,
@@ -134,7 +137,7 @@ fn main() -> Result<(), Error> {
                 wave: "sine".to_string(),
             },
         ],
-        all_mimes: vec![],
+        all_mimes: HashMap::new(),
         path: manifest_path.clone(),
         wrote_manifest: false,
     }));
