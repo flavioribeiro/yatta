@@ -124,9 +124,9 @@ fn main() -> Result<(), Error> {
     let state = Arc::new(Mutex::new(State {
         video_streams: vec![video::VideoStream {
             name: "video_0".to_string(),
-            bitrate: 2_048_000,
-            width: 1280,
-            height: 720,
+            bitrate: 1_024_000,
+            width: 256,
+            height: 144,
         }],
         audio_streams: vec![
             audio::AudioStream {
@@ -134,12 +134,6 @@ fn main() -> Result<(), Error> {
                 lang: "eng".to_string(),
                 default: true,
                 wave: "sine".to_string(),
-            },
-            audio::AudioStream {
-                name: "audio_1".to_string(),
-                lang: "fre".to_string(),
-                default: false,
-                wave: "white-noise".to_string(),
             },
         ],
         all_mimes: vec![],

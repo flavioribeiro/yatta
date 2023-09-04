@@ -35,19 +35,14 @@ impl VideoStream {
             )
             .build()?;
         let timeoverlay = gst::ElementFactory::make("timeoverlay").build()?;
-        let enc = gst::ElementFactory::make("x264enc")
-            .property("bframes", 0u32)
-            .property("bitrate", self.bitrate as u32 / 1000u32)
-            .property_from_str("tune", "zerolatency")
+        let enc = gst::ElementFactory::make("rav1enc")
+            .property("speed-preset", 10 as u32)
+            .property("low-latency", true)
+            .property("max-key-frame-interval", 60 as u64)
+            .property("bitrate", self.bitrate as i32)
             .build()?;
-        let h264_capsfilter = gst::ElementFactory::make("capsfilter")
-            .property(
-                "caps",
-                gst::Caps::builder("video/x-h264")
-                    .field("profile", "main")
-                    .build(),
-            )
-            .build()?;
+        let parser = gst::ElementFactory::make("av1parse").build()?;
+
         let mux = gst::ElementFactory::make("cmafmux")
             .property("fragment-duration", 2000.mseconds())
             .property_from_str("header-update-mode", "update")
@@ -60,7 +55,7 @@ impl VideoStream {
             &raw_capsfilter,
             &timeoverlay,
             &enc,
-            &h264_capsfilter,
+            &parser,
             &mux,
             appsink.upcast_ref(),
         ])?;
@@ -70,7 +65,7 @@ impl VideoStream {
             &raw_capsfilter,
             &timeoverlay,
             &enc,
-            &h264_capsfilter,
+            &parser,
             &mux,
             appsink.upcast_ref(),
         ])?;
