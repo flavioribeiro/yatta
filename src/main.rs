@@ -115,15 +115,22 @@ fn main() -> Result<(), Error> {
     let state = Arc::new(Mutex::new(State {
         video_streams: vec![
             video::VideoStream {
-                name: "h264_0".to_string(),
-                codec: "h264".to_string(),
+                name: "av1_0".to_string(),
+                codec: "av1".to_string(),
+                bitrate: 1_024_000,
+                width: 256,
+                height: 144,
+            },
+            video::VideoStream {
+                name: "h265_0".to_string(),
+                codec: "h265".to_string(),
                 bitrate: 1_024_000,
                 width: 640,
                 height: 360,
             },
             video::VideoStream {
-                name: "h265_0".to_string(),
-                codec: "h265".to_string(),
+                name: "h264_0".to_string(),
+                codec: "h264".to_string(),
                 bitrate: 1_024_000,
                 width: 640,
                 height: 360,

@@ -121,6 +121,24 @@ impl VideoStream {
                     .build()?;
                 Ok((_enc, _parser, _capsfilter))
             }
+            "av1" => {
+                _enc = gst::ElementFactory::make("rav1enc")
+                .property("speed-preset", 10 as u32)
+                .property("low-latency", true)
+                .property("max-key-frame-interval", 60 as u64)
+                .property("bitrate", self.bitrate as i32)
+                .build()?;
+                _parser = gst::ElementFactory::make("av1parse").build()?;
+                _capsfilter = gst::ElementFactory::make("capsfilter")
+                    .property(
+                        "caps",
+                        gst::Caps::builder("video/x-av1")
+                            .field("profile", "main")
+                            .build(),
+                    )
+                    .build()?;
+                Ok((_enc, _parser, _capsfilter))
+            }
             &_ => todo!()
         }
     }
