@@ -40,6 +40,7 @@ impl VideoStream {
             .property("bitrate", self.bitrate as u32 / 1000u32)
             .property_from_str("tune", "zerolatency")
             .build()?;
+        let parser = gst::ElementFactory::make("h264parse").build()?;
         let h264_capsfilter = gst::ElementFactory::make("capsfilter")
             .property(
                 "caps",
@@ -60,6 +61,7 @@ impl VideoStream {
             &raw_capsfilter,
             &timeoverlay,
             &enc,
+            &parser,
             &h264_capsfilter,
             &mux,
             appsink.upcast_ref(),
@@ -70,6 +72,7 @@ impl VideoStream {
             &raw_capsfilter,
             &timeoverlay,
             &enc,
+            &parser,
             &h264_capsfilter,
             &mux,
             appsink.upcast_ref(),
