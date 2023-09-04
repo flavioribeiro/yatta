@@ -37,6 +37,10 @@ impl VideoStream {
             )
             .build()?;
         let timeoverlay = gst::ElementFactory::make("timeoverlay").build()?;
+        let codec_burn_in = gst::ElementFactory::make("textoverlay")
+            .property("text", &self.codec)
+            .property("font-desc", "Sans 24")
+            .build()?;
         let Ok((enc, parser, capsfilter)) = Self::setup_codec(self) else { todo!() };
 
         let mux = gst::ElementFactory::make("cmafmux")
@@ -50,6 +54,7 @@ impl VideoStream {
             &src,
             &raw_capsfilter,
             &timeoverlay,
+            &codec_burn_in,
             &enc,
             &parser,
             &capsfilter,
@@ -61,6 +66,7 @@ impl VideoStream {
             &src,
             &raw_capsfilter,
             &timeoverlay,
+            &codec_burn_in,
             &enc,
             &parser,
             &capsfilter,
