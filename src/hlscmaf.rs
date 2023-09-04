@@ -146,11 +146,7 @@ pub(crate) fn setup(appsink: &gst_app::AppSink, name: &str, path: &Path) {
                     ))
                     .unwrap();
 
-                info!(
-                    "wrote segment with date time {} to {}",
-                    date_time,
-                    path.display()
-                );
+                info!("wrote segment: {}", path.display());
 
                 state.segments.push_back(Segment {
                     duration,
@@ -174,7 +170,6 @@ fn update_manifest(state: &mut StreamState) {
     let mut path = state.path.clone();
     path.push("manifest.m3u8");
 
-    info!("writing manifest to {}", path.display());
     trim_segments(state);
 
     let playlist = MediaPlaylist {
@@ -213,6 +208,7 @@ fn update_manifest(state: &mut StreamState) {
         ..Default::default()
     };
 
+    info!("writing manifest to {}", path.display());
     let mut file = std::fs::File::create(path).unwrap();
     playlist
         .write_to(&mut file)

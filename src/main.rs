@@ -27,7 +27,6 @@ impl State {
         }
 
         if self.all_mimes.len() < self.video_streams.len() + self.audio_streams.len() {
-            info!("not all streams have been setup yet {}, {}, {}", self.all_mimes.len(), self.video_streams.len(), self.audio_streams.len());
             return;
         }
 
@@ -111,25 +110,28 @@ fn main() -> Result<(), Error> {
     manifest_path.push("manifest.m3u8");
 
     let state = Arc::new(Mutex::new(State {
-        video_streams: vec![video::VideoStream {
-            name: "video_0".to_string(),
-            codec: "h264".to_string(),
-            bitrate: 2_048_000,
-            width: 1280,
-            height: 720,
-        }],
+        video_streams: vec![
+            video::VideoStream {
+                name: "h264_0".to_string(),
+                codec: "h264".to_string(),
+                bitrate: 1_024_000,
+                width: 640,
+                height: 360,
+            },
+            video::VideoStream {
+                name: "h265_0".to_string(),
+                codec: "h265".to_string(),
+                bitrate: 1_024_000,
+                width: 640,
+                height: 360,
+            },
+        ],
         audio_streams: vec![
             audio::AudioStream {
                 name: "audio_0".to_string(),
                 lang: "eng".to_string(),
                 default: true,
                 wave: "sine".to_string(),
-            },
-            audio::AudioStream {
-                name: "audio_1".to_string(),
-                lang: "fre".to_string(),
-                default: false,
-                wave: "white-noise".to_string(),
             },
         ],
         all_mimes: vec![],

@@ -99,6 +99,22 @@ impl VideoStream {
                     .build()?;
                 Ok((_enc, _parser, _capsfilter))
             }
+            "h265" => {
+                _enc = gst::ElementFactory::make("x265enc")
+                    .property("bitrate", self.bitrate as u32 / 1000u32)
+                    .property_from_str("tune", "zerolatency")
+                    .build()?;
+                _parser = gst::ElementFactory::make("h265parse").build()?;
+                _capsfilter = gst::ElementFactory::make("capsfilter")
+                    .property(
+                        "caps",
+                        gst::Caps::builder("video/x-h265")
+                            .field("profile", "main")
+                            .build(),
+                    )
+                    .build()?;
+                Ok((_enc, _parser, _capsfilter))
+            }
             &_ => todo!()
         }
     }
