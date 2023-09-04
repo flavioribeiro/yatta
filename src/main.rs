@@ -113,6 +113,7 @@ fn main() -> Result<(), Error> {
     let state = Arc::new(Mutex::new(State {
         video_streams: vec![video::VideoStream {
             name: "video_0".to_string(),
+            codec: "h264".to_string(),
             bitrate: 2_048_000,
             width: 1280,
             height: 720,

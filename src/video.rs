@@ -1,5 +1,6 @@
 use gst::prelude::*;
 use std::{sync::{Mutex, Arc}, path::Path};
+use log::info;
 
 use anyhow::Error;
 
@@ -7,6 +8,7 @@ use crate::{State, hlscmaf, utils};
 
 pub(crate) struct VideoStream {
     pub name: String,
+    pub codec: String,
     pub bitrate: u64,
     pub width: u64,
     pub height: u64,
@@ -35,20 +37,8 @@ impl VideoStream {
             )
             .build()?;
         let timeoverlay = gst::ElementFactory::make("timeoverlay").build()?;
-        let enc = gst::ElementFactory::make("x264enc")
-            .property("bframes", 0u32)
-            .property("bitrate", self.bitrate as u32 / 1000u32)
-            .property_from_str("tune", "zerolatency")
-            .build()?;
-        let parser = gst::ElementFactory::make("h264parse").build()?;
-        let h264_capsfilter = gst::ElementFactory::make("capsfilter")
-            .property(
-                "caps",
-                gst::Caps::builder("video/x-h264")
-                    .field("profile", "main")
-                    .build(),
-            )
-            .build()?;
+        let Ok((enc, parser, capsfilter)) = Self::setup_codec(self) else { todo!() };
+
         let mux = gst::ElementFactory::make("cmafmux")
             .property("fragment-duration", 2000.mseconds())
             .property_from_str("header-update-mode", "update")
@@ -62,7 +52,7 @@ impl VideoStream {
             &timeoverlay,
             &enc,
             &parser,
-            &h264_capsfilter,
+            &capsfilter,
             &mux,
             appsink.upcast_ref(),
         ])?;
@@ -73,7 +63,7 @@ impl VideoStream {
             &timeoverlay,
             &enc,
             &parser,
-            &h264_capsfilter,
+            &capsfilter,
             &mux,
             appsink.upcast_ref(),
         ])?;
@@ -83,5 +73,33 @@ impl VideoStream {
         hlscmaf::setup(&appsink, &self.name, path);
 
         Ok(())
+    }
+
+    fn setup_codec(&self) -> Result<(gst::Element, gst::Element, gst::Element), Error> {
+        info!("Setting up for codec: {}", self.codec);
+        let mut _enc: gst::Element;
+        let mut _parser: gst::Element;
+        let mut _capsfilter: gst::Element;
+
+        match self.codec.as_ref() {
+            "h264" => {
+                _enc = gst::ElementFactory::make("x264enc")
+                    .property("bframes", 0u32)
+                    .property("bitrate", self.bitrate as u32 / 1000u32)
+                    .property_from_str("tune", "zerolatency")
+                    .build()?;
+                _parser = gst::ElementFactory::make("h264parse").build()?;
+                _capsfilter = gst::ElementFactory::make("capsfilter")
+                    .property(
+                        "caps",
+                        gst::Caps::builder("video/x-h264")
+                            .field("profile", "main")
+                            .build(),
+                    )
+                    .build()?;
+                Ok((_enc, _parser, _capsfilter))
+            }
+            &_ => todo!()
+        }
     }
 }
