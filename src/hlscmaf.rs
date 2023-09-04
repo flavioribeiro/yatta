@@ -10,8 +10,6 @@ use chrono::{Duration, Utc, DateTime};
 use gst::prelude::*;
 use log::info;
 
-use crate::{Segment, UnreffedSegment};
-
 struct StreamState {
     path: PathBuf,
     segments: VecDeque<Segment>,
@@ -22,6 +20,16 @@ struct StreamState {
     segment_index: u32,
 }
 
+struct Segment {
+    date_time: DateTime<Utc>,
+    duration: gst::ClockTime,
+    path: String,
+}
+
+struct UnreffedSegment {
+    removal_time: DateTime<Utc>,
+    path: String,
+}
 
 pub(crate) fn setup(appsink: &gst_app::AppSink, name: &str, path: &Path) {
     let mut path: PathBuf = path.into();

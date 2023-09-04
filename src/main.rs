@@ -5,7 +5,6 @@ use std::path::{PathBuf};
 use std::sync::{Arc, Mutex};
 
 use anyhow::Error;
-use chrono::{DateTime, Utc};
 use m3u8_rs::{AlternativeMedia, AlternativeMediaType, MasterPlaylist, VariantStream};
 
 mod hlscmaf;
@@ -99,16 +98,6 @@ impl State {
     }
 }
 
-struct Segment {
-    date_time: DateTime<Utc>,
-    duration: gst::ClockTime,
-    path: String,
-}
-
-struct UnreffedSegment {
-    removal_time: DateTime<Utc>,
-    path: String,
-}
 
 fn main() -> Result<(), Error> {
     gst::init()?;
