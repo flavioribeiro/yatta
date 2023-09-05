@@ -6,6 +6,7 @@ use anyhow::Error;
 use crate::{State, hlscmaf, utils};
 
 pub(crate) struct VideoStream {
+    pub src: gst::Element,
     pub name: String,
     pub codec: String,
     pub bitrate: u64,
@@ -20,21 +21,6 @@ impl VideoStream {
         pipeline: &gst::Pipeline,
         path: &Path,
     ) -> Result<(), Error> {
-        let src = gst::ElementFactory::make("videotestsrc")
-            .property("is-live", true)
-            .build()?;
-
-        let raw_capsfilter = gst::ElementFactory::make("capsfilter")
-            .property(
-                "caps",
-                gst_video::VideoCapsBuilder::new()
-                    .format(gst_video::VideoFormat::I420)
-                    .width(self.width as i32)
-                    .height(self.height as i32)
-                    .framerate(30.into())
-                    .build(),
-            )
-            .build()?;
         let timeoverlay = gst::ElementFactory::make("timeoverlay").build()?;
         let codec_burn_in = gst::ElementFactory::make("textoverlay")
             .property("text", &self.codec)
@@ -50,8 +36,7 @@ impl VideoStream {
         let appsink = gst_app::AppSink::builder().buffer_list(true).build();
 
         pipeline.add_many([
-            &src,
-            &raw_capsfilter,
+            &self.src,
             &timeoverlay,
             &codec_burn_in,
             &enc,
@@ -62,8 +47,7 @@ impl VideoStream {
         ])?;
 
         gst::Element::link_many([
-            &src,
-            &raw_capsfilter,
+            &self.src,
             &timeoverlay,
             &codec_burn_in,
             &enc,
