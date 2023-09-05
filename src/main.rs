@@ -23,26 +23,15 @@ struct State {
 
 impl State {
     fn try_write_manifest(&mut self) {
-        if self.wrote_manifest {
-            return;
-        }
-
-        if self.all_mimes.len() < self.video_streams.len() + self.audio_streams.len() {
-            return;
-        }
-
+        if self.wrote_manifest || self.all_mimes.len() < self.video_streams.len() + self.audio_streams.len() { return };
         self.write_manifest()
     }
 
     fn write_manifest(&mut self) {
         let playlist = MasterPlaylist {
             version: Some(7),
-            variants: self
-                .video_streams
-                .iter()
-                .map(|stream| {
+            variants: self.video_streams.iter().map(|stream| {
                     let mut path = PathBuf::new();
-
                     path.push(&stream.name);
                     path.push("manifest.m3u8");
 
@@ -59,10 +48,7 @@ impl State {
                     }
                 })
                 .collect(),
-            alternatives: self
-                .audio_streams
-                .iter()
-                .map(|stream| {
+            alternatives: self.audio_streams.iter().map(|stream| {
                     let mut path = PathBuf::new();
                     path.push(&stream.name);
                     path.push("manifest.m3u8");
@@ -85,10 +71,7 @@ impl State {
         };
 
         let mut file = std::fs::File::create(&self.path).unwrap();
-        playlist
-            .write_to(&mut file)
-            .expect("Failed to write master playlist");
-
+        playlist.write_to(&mut file).expect("Failed to write master playlist");
         info!("wrote master manifest to {}", self.path.display());
         self.wrote_manifest = true;
     }
@@ -157,9 +140,7 @@ fn main() -> Result<(), Error> {
 
     pipeline.set_state(gst::State::Playing)?;
 
-    let bus = pipeline
-        .bus()
-        .expect("Pipeline without bus. Shouldn't happen!");
+    let bus = pipeline.bus().expect("Pipeline without bus. Shouldn't happen!");
 
     for msg in bus.iter_timed(gst::ClockTime::NONE) {
         use gst::MessageView;
@@ -173,9 +154,7 @@ fn main() -> Result<(), Error> {
                 pipeline.set_state(gst::State::Null)?;
                 eprintln!(
                     "Got error from {}: {} ({})",
-                    msg.src()
-                        .map(|s| String::from(s.path_string()))
-                        .unwrap_or_else(|| "None".into()),
+                    msg.src().map(|s| String::from(s.path_string())).unwrap_or_else(|| "None".into()),
                     err.error(),
                     err.debug().unwrap_or_else(|| "".into()),
                 );

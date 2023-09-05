@@ -118,9 +118,7 @@ pub(crate) fn setup(appsink: &gst_app::AppSink, name: &str, path: &Path) {
                     let pts_clock_time = pts + sink.base_time().unwrap();
 
                     let diff = now_gst.checked_sub(pts_clock_time).unwrap();
-                    let pts_utc = now_utc
-                        .checked_sub_signed(Duration::nanoseconds(diff.nseconds() as i64))
-                        .unwrap();
+                    let pts_utc = now_utc.checked_sub_signed(Duration::nanoseconds(diff.nseconds() as i64)).unwrap();
 
                     state.start_date_time = Some(pts_utc);
                 }
@@ -139,10 +137,7 @@ pub(crate) fn setup(appsink: &gst_app::AppSink, name: &str, path: &Path) {
                     .start_date_time
                     .unwrap()
                     .checked_add_signed(Duration::nanoseconds(
-                        pts.opt_checked_sub(state.start_time)
-                            .unwrap()
-                            .unwrap()
-                            .nseconds() as i64,
+                        pts.opt_checked_sub(state.start_time).unwrap().unwrap().nseconds() as i64,
                     ))
                     .unwrap();
 
@@ -182,8 +177,7 @@ fn update_manifest(state: &mut StreamState) {
             .enumerate()
             .map(|(idx, segment)| MediaSegment {
                 uri: segment.path.to_string(),
-                duration: (segment.duration.nseconds() as f64
-                    / gst::ClockTime::SECOND.nseconds() as f64) as f32,
+                duration: (segment.duration.nseconds() as f64 / gst::ClockTime::SECOND.nseconds() as f64) as f32,
                 map: if idx == 0 {
                     Some(m3u8_rs::Map {
                         uri: "init.mp4".into(),
@@ -210,9 +204,7 @@ fn update_manifest(state: &mut StreamState) {
 
     info!("writing manifest to {}", path.display());
     let mut file = std::fs::File::create(path).unwrap();
-    playlist
-        .write_to(&mut file)
-        .expect("Failed to write media playlist");
+    playlist.write_to(&mut file).expect("Failed to write media playlist");
 }
 
 fn trim_segments(state: &mut StreamState) {
@@ -227,10 +219,7 @@ fn trim_segments(state: &mut StreamState) {
             // than the duration of the longest playlist + duration of the segment.
             // This is 15 seconds (12.5 + 2.5) in our case, we use 20 seconds to be on the
             // safe side
-            removal_time: segment
-                .date_time
-                .checked_add_signed(Duration::seconds(20))
-                .unwrap(),
+            removal_time: segment.date_time.checked_add_signed(Duration::seconds(20)).unwrap(),
             path: segment.path.clone(),
         });
     }

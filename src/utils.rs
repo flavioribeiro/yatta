@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use crate::State;
 
 
-pub(crate) fn probe_encoder(state: Arc<Mutex<State>>, enc: gst::Element, variant_name: String) {
+pub(crate) fn probe_encoder(state: Arc<Mutex<State>>, enc: gst::Element, name: String) {
     enc.static_pad("src").unwrap().add_probe(
         gst::PadProbeType::EVENT_DOWNSTREAM,
         move |_pad, info| match info.data {
@@ -20,10 +20,7 @@ pub(crate) fn probe_encoder(state: Arc<Mutex<State>>, enc: gst::Element, variant
                         mime = "av01.0.00M.08".into();
                     }
                     let mut state = state.lock().unwrap();
-                    state.all_mimes.insert(
-                        variant_name.to_string(),
-                        mime.into(),
-                    );
+                    state.all_mimes.insert(name.to_string(), mime.into());
                     state.try_write_manifest();
                     gst::PadProbeReturn::Remove
                 }

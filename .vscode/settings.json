@@ -3,5 +3,8 @@
         "./Cargo.toml",
         "./Cargo.toml",
         "./Cargo.toml"
-    ]
+    ],
+    "rust-analyzer.checkOnSave.enable": true,
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 20,
 }
