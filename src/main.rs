@@ -35,12 +35,6 @@ impl State {
     }
 
     fn write_manifest(&mut self) {
-        // let mut all_mimes = self.all_mimes.clone();
-        // all_mimes.sort();
-        // all_mimes.dedup();
-
-
-        info!("MIMES: {:?}", self.all_mimes);
         let playlist = MasterPlaylist {
             version: Some(7),
             variants: self

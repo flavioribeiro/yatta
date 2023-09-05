@@ -1,6 +1,5 @@
 use gst::prelude::*;
 use std::{sync::{Mutex, Arc}, path::Path};
-use log::info;
 
 use anyhow::Error;
 
@@ -82,7 +81,6 @@ impl VideoStream {
     }
 
     fn setup_codec(&self) -> Result<(gst::Element, gst::Element, gst::Element), Error> {
-        info!("Setting up for codec: {}", self.codec);
         let mut _enc: gst::Element;
         let mut _parser: gst::Element;
         let mut _capsfilter: gst::Element;
