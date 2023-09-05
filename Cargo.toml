@@ -1,11 +1,11 @@
 [package]
-name = "gesha"
+name = "yatta"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.70"
 
 [[bin]]
-name = "gesha"
+name = "yatta"
 path = "./src/main.rs"
 
 [dependencies]
