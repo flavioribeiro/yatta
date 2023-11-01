@@ -116,7 +116,7 @@ fn main() -> Result<(), Error> {
         audio_streams: vec![
             audio::AudioStream {
                 name: "audio_0".to_string(),
-                lang: "eng".to_string(),
+                lang: "en".to_string(),
                 default: true,
                 wave: "sine".to_string(),
             },
