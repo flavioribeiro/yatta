@@ -42,7 +42,7 @@ impl VideoStream {
             .build()?;
         let Ok((enc, parser, capsfilter)) = Self::setup_codec(self) else { todo!() };
 
-        let mux = gst::ElementFactory::make("cmafmux")
+        let mux = gst::ElementFactory::make("isofmp4mux")
             .property("fragment-duration", 2000.mseconds())
             .property_from_str("header-update-mode", "update")
             .property("write-mehd", true)
@@ -121,9 +121,9 @@ impl VideoStream {
             }
             "av1" => {
                 _enc = gst::ElementFactory::make("rav1enc")
-                .property("speed-preset", 10 as u32)
+                .property("speed-preset", 10u32)
                 .property("low-latency", true)
-                .property("max-key-frame-interval", 60 as u64)
+                .property("max-key-frame-interval", 60u64)
                 .property("bitrate", self.bitrate as i32)
                 .build()?;
                 _parser = gst::ElementFactory::make("av1parse").build()?;
