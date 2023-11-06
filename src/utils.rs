@@ -17,7 +17,14 @@ pub(crate) fn probe_encoder(state: Arc<Mutex<State>>, enc: gst::Element, name: S
                         // https://aomediacodec.github.io/av1-isobmff/#codecsparam
                         if let Ok(codec_data) = structure.get::<&gst::BufferRef>("codec_data") {
                             let map = codec_data.map_readable().unwrap();
-                            mime = calculate_av1_mime(map.as_slice()).into();
+                            mime = compute_av1_mime(
+                                map.as_slice(),
+                                structure
+                                    .get::<&str>("colorimetry")
+                                    .ok()
+                                    .and_then(|c| c.parse::<gst_video::VideoColorimetry>().ok()),
+                            )
+                            .into();
                         } else {
                             // Fallback to a default mime
                             mime = "av01.0.00M.08".into();
@@ -53,6 +60,7 @@ pub(crate) fn probe_encoder(state: Arc<Mutex<State>>, enc: gst::Element, name: S
 //     unsigned int(1) chroma_subsampling_x;
 //     unsigned int(1) chroma_subsampling_y;
 //     unsigned int(2) chroma_sample_position;
+//
 //     unsigned int(3) reserved = 0;
 //     ...
 //  }
@@ -76,20 +84,20 @@ pub(crate) fn probe_encoder(state: Arc<Mutex<State>>, enc: gst::Element, name: S
 // https://aomediacodec.github.io/av1-isobmff/#codecsparam
 //
 // https://aomediacodec.github.io/av1-spec/av1-spec.pdf - 5.5.2. Color config syntax
-fn calculate_av1_mime(data: &[u8]) -> String {
-    assert!(data.len() >= 3);
-    let seq_profile = (data[1] >> 5) & 0b0111;
-    let seq_level_idx_0 = data[1] & 0b0001_1111;
+fn compute_av1_mime(codec_data: &[u8], colorimetry: Option<gst_video::VideoColorimetry>) -> String {
+    assert!(codec_data.len() >= 3);
+    let seq_profile = (codec_data[1] >> 5) & 0b0111;
+    let seq_level_idx_0 = codec_data[1] & 0b0001_1111;
     let tier = {
-        let seq_tier_0 = data[2] >> 7;
+        let seq_tier_0 = codec_data[2] >> 7;
         if seq_tier_0 == 0 {
             "M"
         } else {
             "H"
         }
     };
-    let high_bitdepth = (data[2] >> 6) & 0b0000_0001;
-    let twelve_bit = (data[2] >> 5) & 0b0000_0001;
+    let high_bitdepth = (codec_data[2] >> 6) & 0x01;
+    let twelve_bit = (codec_data[2] >> 5) & 0x01;
     let bit_depth: u8 = if seq_profile == 2 && high_bitdepth == 1 {
         if twelve_bit == 1 {
             12
@@ -101,21 +109,104 @@ fn calculate_av1_mime(data: &[u8]) -> String {
     } else {
         8
     };
-    format!(
-        "av01.{}.{:02}{}.{:02}",
-        seq_profile, seq_level_idx_0, tier, bit_depth
-    )
+    let monochrome = (codec_data[2] >> 4) & 0x01;
+    let chroma_subsampling_x = (codec_data[2] >> 3) & 0x01;
+    let chroma_subsampling_y = (codec_data[2] >> 2) & 0x01;
+    let chroma_sample_position = if chroma_subsampling_x == 1 && chroma_subsampling_y == 1 {
+        codec_data[2] & 0b011
+    } else {
+        0
+    };
+
+    if let Some(colorimetry_info) = colorimetry {
+        let (primaries, transfer, matrix) = {
+            (
+                (colorimetry_info.primaries().to_iso() as u16),
+                (colorimetry_info.transfer().to_iso() as u16),
+                (colorimetry_info.matrix().to_iso() as u16),
+            )
+        };
+
+        let full_range: u8 = match colorimetry_info.range() {
+            gst_video::VideoColorRange::Range0_255 => 1,
+            _ => 0,
+        };
+        format!(
+            "av01.{}.{:02}{}.{:02}.{}.{}{}{}.{:02}.{:02}.{:02}.{}",
+            seq_profile,
+            seq_level_idx_0,
+            tier,
+            bit_depth,
+            monochrome,
+            chroma_subsampling_x,
+            chroma_subsampling_y,
+            chroma_sample_position,
+            primaries,
+            transfer,
+            matrix,
+            full_range
+        )
+    } else {
+        format!(
+            "av01.{}.{:02}{}.{:02}",
+            seq_profile, seq_level_idx_0, tier, bit_depth
+        )
+    }.replace(".0.110.01.01.01.0", "")
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Once;
     use super::*;
 
+    fn gst_init() {
+        const INIT: Once = Once::new();
+        INIT.call_once(|| {
+            gst::init().unwrap();
+        });
+    }
+
     #[test]
-    fn can_calculate_av1_mimes() {
+    fn can_compute_simple_av1_mimes() {
+        gst_init();
+
         assert_eq!(
-            calculate_av1_mime(&[0b1000_0001, 0b0000_0000, 0b0000_0000]),
+            compute_av1_mime(&[0b1000_0001, 0b0000_0000, 0b0000_1100], None),
             "av01.0.00M.08"
+        );
+    }
+
+    #[test]
+    fn test_compute_full_av1_mime_with_colorimetry_with_default_values() {
+        gst_init();
+
+        let colorimetry = gst_video::VideoColorimetry::new(
+            gst_video::VideoColorRange::Range16_235,
+            gst_video::VideoColorMatrix::Bt709,
+            gst_video::VideoTransferFunction::Bt709,
+            gst_video::VideoColorPrimaries::Bt709,
+        );
+
+        assert_eq!(
+            compute_av1_mime(&[0b1000_0001, 0b0000_0000, 0b0000_1100], Some(colorimetry)),
+            "av01.0.00M.08"
+        );
+    }
+
+    #[test]
+    fn test_compute_full_av1_mime_with_specific_colorimetry() {
+        gst_init();
+
+        let colorimetry = gst_video::VideoColorimetry::new(
+            gst_video::VideoColorRange::Range16_235, // Limited range
+            gst_video::VideoColorMatrix::Bt2020, // ITU-R BT.2100 YCbCr color matrix
+            gst_video::VideoTransferFunction::Smpte2084, // ITU-R BT.2100 PQ transfer characteristics
+            gst_video::VideoColorPrimaries::Bt2020, // ITU-R BT.2100 color primaries
+        );
+
+        assert_eq!(
+            compute_av1_mime(&[0b1000_0001, 0b0000_0100, 0b0110_1110], Some(colorimetry)),
+            "av01.0.04M.10.0.112.09.16.09.0"
         );
     }
 }
