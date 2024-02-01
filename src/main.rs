@@ -12,7 +12,6 @@ mod hlscmaf;
 mod utils;
 mod video;
 mod audio;
-mod source;
 
 struct State {
     video_streams: Vec<video::VideoStream>,
@@ -90,11 +89,9 @@ fn main() -> Result<(), Error> {
     let mut manifest_path = path.clone();
     manifest_path.push("manifest.m3u8");
 
-    let (video_src, audio_src) = source::create_source_tees("".to_string(), &pipeline)?;
     let state = Arc::new(Mutex::new(State {
         video_streams: vec![
             video::VideoStream {
-                src: video_src.clone(),
                 name: "av1_0".to_string(),
                 codec: "av1".to_string(),
                 bitrate: 1_024_000,
@@ -102,7 +99,6 @@ fn main() -> Result<(), Error> {
                 height: 144,
             },
             video::VideoStream {
-                src: video_src.clone(),
                 name: "h265_0".to_string(),
                 codec: "h265".to_string(),
                 bitrate: 1_024_000,
@@ -110,7 +106,6 @@ fn main() -> Result<(), Error> {
                 height: 360,
             },
             video::VideoStream {
-                src: video_src.clone(),
                 name: "h264_0".to_string(),
                 codec: "h264".to_string(),
                 bitrate: 1_024_000,
@@ -120,10 +115,10 @@ fn main() -> Result<(), Error> {
         ],
         audio_streams: vec![
             audio::AudioStream {
-                src: audio_src.clone(),
                 name: "audio_0".to_string(),
                 lang: "en".to_string(),
                 default: true,
+                wave: "sine".to_string(),
             },
         ],
         all_mimes: HashMap::new(),
