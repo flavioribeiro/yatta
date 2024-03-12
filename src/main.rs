@@ -2,16 +2,19 @@ use gst::prelude::*;
 use log::info;
 
 use std::collections::HashMap;
-use std::path::{PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::{process, thread};
 
 use anyhow::Error;
 use m3u8_rs::{AlternativeMedia, AlternativeMediaType, MasterPlaylist, VariantStream};
+use tokio::runtime::Builder;
 
+mod audio;
 mod hlscmaf;
+mod server;
 mod utils;
 mod video;
-mod audio;
 
 struct State {
     video_streams: Vec<video::VideoStream>,
@@ -23,14 +26,21 @@ struct State {
 
 impl State {
     fn try_write_manifest(&mut self) {
-        if self.wrote_manifest || self.all_mimes.len() < self.video_streams.len() + self.audio_streams.len() { return };
+        if self.wrote_manifest
+            || self.all_mimes.len() < self.video_streams.len() + self.audio_streams.len()
+        {
+            return;
+        };
         self.write_manifest()
     }
 
     fn write_manifest(&mut self) {
         let playlist = MasterPlaylist {
             version: Some(7),
-            variants: self.video_streams.iter().map(|stream| {
+            variants: self
+                .video_streams
+                .iter()
+                .map(|stream| {
                     let mut path = PathBuf::new();
                     path.push(&stream.name);
                     path.push("manifest.m3u8");
@@ -48,7 +58,10 @@ impl State {
                     }
                 })
                 .collect(),
-            alternatives: self.audio_streams.iter().map(|stream| {
+            alternatives: self
+                .audio_streams
+                .iter()
+                .map(|stream| {
                     let mut path = PathBuf::new();
                     path.push(&stream.name);
                     path.push("manifest.m3u8");
@@ -71,12 +84,13 @@ impl State {
         };
 
         let mut file = std::fs::File::create(&self.path).unwrap();
-        playlist.write_to(&mut file).expect("Failed to write master playlist");
+        playlist
+            .write_to(&mut file)
+            .expect("Failed to write master playlist");
         info!("wrote master manifest to {}", self.path.display());
         self.wrote_manifest = true;
     }
 }
-
 
 fn main() -> Result<(), Error> {
     gst::init()?;
@@ -91,13 +105,13 @@ fn main() -> Result<(), Error> {
 
     let state = Arc::new(Mutex::new(State {
         video_streams: vec![
-            video::VideoStream {
-                name: "av1_0".to_string(),
-                codec: "av1".to_string(),
-                bitrate: 1_024_000,
-                width: 256,
-                height: 144,
-            },
+            // video::VideoStream {
+            //     name: "av1_0".to_string(),
+            //     codec: "av1".to_string(),
+            //     bitrate: 1_024_000,
+            //     width: 256,
+            //     height: 144,
+            // },
             video::VideoStream {
                 name: "h265_0".to_string(),
                 codec: "h265".to_string(),
@@ -113,14 +127,12 @@ fn main() -> Result<(), Error> {
                 height: 360,
             },
         ],
-        audio_streams: vec![
-            audio::AudioStream {
-                name: "audio_0".to_string(),
-                lang: "en".to_string(),
-                default: true,
-                wave: "sine".to_string(),
-            },
-        ],
+        audio_streams: vec![audio::AudioStream {
+            name: "audio_0".to_string(),
+            lang: "en".to_string(),
+            default: true,
+            wave: "sine".to_string(),
+        }],
         all_mimes: HashMap::new(),
         path: manifest_path.clone(),
         wrote_manifest: false,
@@ -140,7 +152,31 @@ fn main() -> Result<(), Error> {
 
     pipeline.set_state(gst::State::Playing)?;
 
-    let bus = pipeline.bus().expect("Pipeline without bus. Shouldn't happen!");
+    let bus = pipeline
+        .bus()
+        .expect("Pipeline without bus. Shouldn't happen!");
+
+    ctrlc::set_handler({
+        let pipeline_weak = pipeline.downgrade();
+        move || {
+            let pipeline = pipeline_weak.upgrade().unwrap();
+            pipeline.set_state(gst::State::Null).unwrap();
+            process::exit(0);
+        }
+    })?;
+
+    thread::spawn({
+        let pipeline_weak = pipeline.downgrade();
+        move || {
+            let runtime = Builder::new_multi_thread()
+                .worker_threads(2)
+                .thread_name("http-server")
+                .enable_all()
+                .build()
+                .unwrap();
+            runtime.block_on(server::run(8080, pipeline_weak))
+        }
+    });
 
     for msg in bus.iter_timed(gst::ClockTime::NONE) {
         use gst::MessageView;
@@ -154,7 +190,9 @@ fn main() -> Result<(), Error> {
                 pipeline.set_state(gst::State::Null)?;
                 eprintln!(
                     "Got error from {}: {} ({})",
-                    msg.src().map(|s| String::from(s.path_string())).unwrap_or_else(|| "None".into()),
+                    msg.src()
+                        .map(|s| String::from(s.path_string()))
+                        .unwrap_or_else(|| "None".into()),
                     err.error(),
                     err.debug().unwrap_or_else(|| "".into()),
                 );

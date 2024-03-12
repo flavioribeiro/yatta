@@ -151,13 +151,14 @@ fn compute_av1_mime(codec_data: &[u8], colorimetry: Option<gst_video::VideoColor
             "av01.{}.{:02}{}.{:02}",
             seq_profile, seq_level_idx_0, tier, bit_depth
         )
-    }.replace(".0.110.01.01.01.0", "")
+    }
+    .replace(".0.110.01.01.01.0", "")
 }
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Once;
     use super::*;
+    use std::sync::Once;
 
     fn gst_init() {
         const INIT: Once = Once::new();
@@ -198,10 +199,10 @@ mod tests {
         gst_init();
 
         let colorimetry = gst_video::VideoColorimetry::new(
-            gst_video::VideoColorRange::Range16_235, // Limited range
-            gst_video::VideoColorMatrix::Bt2020, // ITU-R BT.2100 YCbCr color matrix
+            gst_video::VideoColorRange::Range16_235,     // Limited range
+            gst_video::VideoColorMatrix::Bt2020,         // ITU-R BT.2100 YCbCr color matrix
             gst_video::VideoTransferFunction::Smpte2084, // ITU-R BT.2100 PQ transfer characteristics
-            gst_video::VideoColorPrimaries::Bt2020, // ITU-R BT.2100 color primaries
+            gst_video::VideoColorPrimaries::Bt2020,      // ITU-R BT.2100 color primaries
         );
 
         assert_eq!(

@@ -1,9 +1,12 @@
 use gst::prelude::*;
-use std::{sync::{Mutex, Arc}, path::Path};
+use std::{
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 use anyhow::Error;
 
-use crate::{State, hlscmaf, utils};
+use crate::{hlscmaf, utils, State};
 
 pub(crate) struct AudioStream {
     pub name: String,
@@ -42,4 +45,3 @@ impl AudioStream {
         Ok(())
     }
 }
-

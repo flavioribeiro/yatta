@@ -1,3 +1,5 @@
+use anyhow::Error;
+use std::io::Read;
 use std::{
     collections::VecDeque,
     path::{Path, PathBuf},
@@ -6,11 +8,16 @@ use std::{
 
 use m3u8_rs::{MediaPlaylist, MediaSegment};
 
-use chrono::{Duration, Utc, DateTime};
+use chrono::{DateTime, Duration, TimeDelta, Utc};
+use gst::glib::bitflags::Flags;
 use gst::prelude::*;
 use log::info;
 
-struct StreamState {
+struct StreamState<P>
+where
+    P: Publisher,
+{
+    publisher: P,
     path: PathBuf,
     segments: VecDeque<Segment>,
     trimmed_segments: VecDeque<UnreffedSegment>,
@@ -36,9 +43,10 @@ pub(crate) fn setup(appsink: &gst_app::AppSink, name: &str, path: &Path) {
     path.push(name);
 
     let state = Arc::new(Mutex::new(StreamState {
+        publisher: FilePublisher::new(&path.clone()),
         segments: VecDeque::new(),
         trimmed_segments: VecDeque::new(),
-        path,
+        path: path.clone(),
         start_date_time: None,
         start_time: gst::ClockTime::NONE,
         media_sequence: 0,
@@ -68,13 +76,14 @@ pub(crate) fn setup(appsink: &gst_app::AppSink, name: &str, path: &Path) {
                     .flags()
                     .contains(gst::BufferFlags::DISCONT | gst::BufferFlags::HEADER)
                 {
-                    let mut path = state.path.clone();
-                    std::fs::create_dir_all(&path).expect("failed to create directory");
-                    path.push("init.mp4");
+                    // let mut path = state.path.clone();
+                    // std::fs::create_dir_all(&path).expect("failed to create directory");
+                    // path.push("init.mp4");
 
-                    info!("writing header to {}", path.display());
+                    // info!("writing header to {}", path.display());
                     let map = first.map_readable().unwrap();
-                    std::fs::write(path, &map).expect("failed to write header");
+                    // std::fs::write(path, &map).expect("failed to write header");
+                    state.publisher.publish_header("init.mp4", &map).unwrap();
                     drop(map);
 
                     // Remove the header from the buffer list
@@ -93,11 +102,6 @@ pub(crate) fn setup(appsink: &gst_app::AppSink, name: &str, path: &Path) {
                 // If the buffer only has the HEADER flag set then this is a segment header that is
                 // followed by one or more actual media buffers.
                 assert!(first.flags().contains(gst::BufferFlags::HEADER));
-
-                let mut path = state.path.clone();
-                let basename = format!("segment_{}.fmp4", state.segment_index);
-                state.segment_index += 1;
-                path.push(&basename);
 
                 let segment = sample
                     .segment()
@@ -118,30 +122,43 @@ pub(crate) fn setup(appsink: &gst_app::AppSink, name: &str, path: &Path) {
                     let pts_clock_time = pts + sink.base_time().unwrap();
 
                     let diff = now_gst.checked_sub(pts_clock_time).unwrap();
-                    let pts_utc = now_utc.checked_sub_signed(Duration::nanoseconds(diff.nseconds() as i64)).unwrap();
+                    let pts_utc = now_utc
+                        .checked_sub_signed(Duration::nanoseconds(diff.nseconds() as i64))
+                        .unwrap();
 
                     state.start_date_time = Some(pts_utc);
                 }
 
                 let duration = first.duration().unwrap();
 
-                let mut file = std::fs::File::create(&path).expect("failed to open fragment");
+                let mut buffer_contents = Vec::new();
                 for buffer in &*buffer_list {
                     use std::io::prelude::*;
 
                     let map = buffer.map_readable().unwrap();
-                    file.write_all(&map).expect("failed to write fragment");
+                    buffer_contents
+                        .write_all(&map)
+                        .expect("failed to write fragment");
                 }
+                let basename = format!("segment_{}.fmp4", state.segment_index);
+                state.segment_index += 1;
+                state
+                    .publisher
+                    .publish_segment(&basename, &buffer_contents)
+                    .unwrap();
 
                 let date_time = state
                     .start_date_time
                     .unwrap()
                     .checked_add_signed(Duration::nanoseconds(
-                        pts.opt_checked_sub(state.start_time).unwrap().unwrap().nseconds() as i64,
+                        pts.opt_checked_sub(state.start_time)
+                            .unwrap()
+                            .unwrap()
+                            .nseconds() as i64,
                     ))
                     .unwrap();
 
-                info!("wrote segment: {}", path.display());
+                //info!("wrote segment: {}", path.display());
 
                 state.segments.push_back(Segment {
                     duration,
@@ -160,11 +177,11 @@ pub(crate) fn setup(appsink: &gst_app::AppSink, name: &str, path: &Path) {
     );
 }
 
-fn update_manifest(state: &mut StreamState) {
+fn update_manifest<P>(state: &mut StreamState<P>)
+where
+    P: Publisher,
+{
     // Now write the manifest
-    let mut path = state.path.clone();
-    path.push("manifest.m3u8");
-
     trim_segments(state);
 
     let playlist = MediaPlaylist {
@@ -177,7 +194,8 @@ fn update_manifest(state: &mut StreamState) {
             .enumerate()
             .map(|(idx, segment)| MediaSegment {
                 uri: segment.path.to_string(),
-                duration: (segment.duration.nseconds() as f64 / gst::ClockTime::SECOND.nseconds() as f64) as f32,
+                duration: (segment.duration.nseconds() as f64
+                    / gst::ClockTime::SECOND.nseconds() as f64) as f32,
                 map: if idx == 0 {
                     Some(m3u8_rs::Map {
                         uri: "init.mp4".into(),
@@ -202,12 +220,20 @@ fn update_manifest(state: &mut StreamState) {
         ..Default::default()
     };
 
-    info!("writing manifest to {}", path.display());
-    let mut file = std::fs::File::create(path).unwrap();
-    playlist.write_to(&mut file).expect("Failed to write media playlist");
+    let mut manifest_contents = Vec::new();
+    playlist
+        .write_to(&mut manifest_contents)
+        .expect("Failed to write media playlist");
+    state
+        .publisher
+        .publish_manifest("manifest.m3u8", &manifest_contents)
+        .unwrap();
 }
 
-fn trim_segments(state: &mut StreamState) {
+fn trim_segments<P>(state: &mut StreamState<P>)
+where
+    P: Publisher,
+{
     // Arbitrary 5 segments window
     while state.segments.len() > 5 {
         let segment = state.segments.pop_front().unwrap();
@@ -219,7 +245,10 @@ fn trim_segments(state: &mut StreamState) {
             // than the duration of the longest playlist + duration of the segment.
             // This is 15 seconds (12.5 + 2.5) in our case, we use 20 seconds to be on the
             // safe side
-            removal_time: segment.date_time.checked_add_signed(Duration::seconds(20)).unwrap(),
+            removal_time: segment
+                .date_time
+                .checked_add_signed(TimeDelta::try_seconds(20).unwrap())
+                .unwrap(),
             path: segment.path.clone(),
         });
     }
@@ -235,5 +264,47 @@ fn trim_segments(state: &mut StreamState) {
         } else {
             break;
         }
+    }
+}
+
+pub trait Publisher {
+    fn publish_manifest(&self, path: &str, contents: impl AsRef<[u8]>) -> Result<(), Error>;
+    fn publish_header(&self, path: &str, contents: impl AsRef<[u8]>) -> Result<(), Error>;
+    fn publish_segment(&self, path: &str, contents: impl AsRef<[u8]>) -> Result<(), Error>;
+}
+
+pub struct FilePublisher {
+    base_path: PathBuf,
+}
+
+impl FilePublisher {
+    pub fn new(base_path: &Path) -> Self {
+        std::fs::create_dir_all(&base_path).expect("failed to create directory");
+        Self {
+            base_path: base_path.into(),
+        }
+    }
+}
+
+impl Publisher for FilePublisher {
+    fn publish_manifest(&self, path: &str, contents: impl AsRef<[u8]>) -> Result<(), Error> {
+        let mut full_path = self.base_path.clone();
+        full_path.push(path);
+        info!("writing manifest to {}", full_path.display());
+        std::fs::write(&full_path, contents).map_err(Error::from)
+    }
+
+    fn publish_header(&self, path: &str, contents: impl AsRef<[u8]>) -> Result<(), Error> {
+        let mut full_path = self.base_path.clone();
+        full_path.push(path);
+        info!("writing header to {}", full_path.display());
+        std::fs::write(&full_path, contents).map_err(Error::from)
+    }
+
+    fn publish_segment(&self, path: &str, contents: impl AsRef<[u8]>) -> Result<(), Error> {
+        let mut full_path = self.base_path.clone();
+        full_path.push(path);
+        info!("writing segment: {}", full_path.display());
+        std::fs::write(&full_path, contents).map_err(Error::from)
     }
 }

@@ -1,9 +1,13 @@
 use gst::prelude::*;
-use std::{sync::{Mutex, Arc}, path::Path};
+use std::{
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 use anyhow::Error;
+use chrono::TimeDelta;
 
-use crate::{State, hlscmaf, utils};
+use crate::{hlscmaf, utils, State};
 
 pub(crate) struct VideoStream {
     pub name: String,
@@ -40,7 +44,9 @@ impl VideoStream {
             .property("text", &self.codec)
             .property("font-desc", "Sans 24")
             .build()?;
-        let Ok((enc, parser, capsfilter)) = Self::setup_codec(self) else { todo!() };
+        let Ok((enc, parser, capsfilter)) = Self::setup_codec(self) else {
+            return Err(anyhow::anyhow!("Failed to setup codec: {}", self.codec));
+        };
 
         let mux = gst::ElementFactory::make("isofmp4mux")
             .property("fragment-duration", 2000.mseconds())
@@ -81,19 +87,30 @@ impl VideoStream {
     }
 
     fn setup_codec(&self) -> Result<(gst::Element, gst::Element, gst::Element), Error> {
-        let mut _enc: gst::Element;
-        let mut _parser: gst::Element;
-        let mut _capsfilter: gst::Element;
+        let parser: gst::Element;
+        let capsfilter: gst::Element;
+
+        let enc_factory = encoder_for_codec(&self.codec)
+            .expect(&format!("No encoder found for codec: {}", self.codec));
+        let enc = enc_factory.create().build()?;
 
         match self.codec.as_ref() {
             "h264" => {
-                _enc = gst::ElementFactory::make("x264enc")
-                    .property("bframes", 0u32)
-                    .property("bitrate", self.bitrate as u32 / 1000u32)
-                    .property_from_str("tune", "zerolatency")
-                    .build()?;
-                _parser = gst::ElementFactory::make("h264parse").build()?;
-                _capsfilter = gst::ElementFactory::make("capsfilter")
+                if enc.has_property("bitrate", None) {
+                    enc.set_property("bitrate", self.bitrate as u32 / 1000u32);
+                }
+                if enc.has_property("realtime", None) {
+                    enc.set_property("realtime", true);
+                }
+                // if enc.has_property("max-keyframe-interval-duration", None) {
+                //     enc.set_property("max-keyframe-interval-duration", gst::ClockTime::from_seconds(1).mseconds());
+                // }
+                if enc_factory.name() == "x264enc" {
+                    enc.set_property("bframes", 0u32);
+                    enc.set_property_from_str("tune", "zerolatency");
+                }
+                parser = gst::ElementFactory::make("h264parse").build()?;
+                capsfilter = gst::ElementFactory::make("capsfilter")
                     .property(
                         "caps",
                         gst::Caps::builder("video/x-h264")
@@ -101,15 +118,23 @@ impl VideoStream {
                             .build(),
                     )
                     .build()?;
-                Ok((_enc, _parser, _capsfilter))
+                Ok((enc, parser, capsfilter))
             }
             "h265" => {
-                _enc = gst::ElementFactory::make("x265enc")
-                    .property("bitrate", self.bitrate as u32 / 1000u32)
-                    .property_from_str("tune", "zerolatency")
-                    .build()?;
-                _parser = gst::ElementFactory::make("h265parse").build()?;
-                _capsfilter = gst::ElementFactory::make("capsfilter")
+                if enc.has_property("bitrate", None) {
+                    enc.set_property("bitrate", self.bitrate as u32 / 1000u32);
+                }
+                if enc.has_property("realtime", None) {
+                    enc.set_property("realtime", true);
+                }
+                // if enc.has_property("max-keyframe-interval-duration", None) {
+                //     enc.set_property("max-keyframe-interval-duration", gst::ClockTime::from_seconds(1).mseconds());
+                // }
+                if enc_factory.name() == "x264enc" {
+                    enc.set_property_from_str("tune", "zerolatency");
+                }
+                parser = gst::ElementFactory::make("h265parse").build()?;
+                capsfilter = gst::ElementFactory::make("capsfilter")
                     .property(
                         "caps",
                         gst::Caps::builder("video/x-h265")
@@ -117,17 +142,20 @@ impl VideoStream {
                             .build(),
                     )
                     .build()?;
-                Ok((_enc, _parser, _capsfilter))
+                Ok((enc, parser, capsfilter))
             }
             "av1" => {
-                _enc = gst::ElementFactory::make("rav1enc")
-                .property("speed-preset", 10u32)
-                .property("low-latency", true)
-                .property("max-key-frame-interval", 60u64)
-                .property("bitrate", self.bitrate as i32)
-                .build()?;
-                _parser = gst::ElementFactory::make("av1parse").build()?;
-                _capsfilter = gst::ElementFactory::make("capsfilter")
+                if enc_factory.name() == "rav1enc" {
+                    enc.set_property("speed-preset", 10u32);
+                    enc.set_property("low-latency", true);
+                    enc.set_property(
+                        "max-key-frame-interval",
+                        gst::ClockTime::from_seconds(1).mseconds(),
+                    );
+                    enc.set_property("bitrate", self.bitrate as i32);
+                }
+                parser = gst::ElementFactory::make("av1parse").build()?;
+                capsfilter = gst::ElementFactory::make("capsfilter")
                     .property(
                         "caps",
                         gst::Caps::builder("video/x-av1")
@@ -135,9 +163,28 @@ impl VideoStream {
                             .build(),
                     )
                     .build()?;
-                Ok((_enc, _parser, _capsfilter))
+                Ok((enc, parser, capsfilter))
             }
-            &_ => todo!()
+            &_ => todo!(),
         }
     }
+}
+
+fn encoder_for_codec(codec: &String) -> Option<gst::ElementFactory> {
+    let encoders = gst::ElementFactory::factories_with_type(
+        gst::ElementFactoryType::ENCODER,
+        gst::Rank::MARGINAL,
+    );
+    let caps = gst::Caps::new_empty_simple(format!("video/x-{}", codec));
+    encoders
+        .iter()
+        .find(|factory| {
+            factory.static_pad_templates().iter().any(|template| {
+                let template_caps = template.caps();
+                template.direction() == gst::PadDirection::Src
+                    && !template_caps.is_any()
+                    && caps.can_intersect(&template_caps)
+            })
+        })
+        .cloned()
 }
