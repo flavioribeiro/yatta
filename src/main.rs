@@ -1,12 +1,11 @@
-use gst::prelude::*;
-use log::info;
-
+use std::{process, thread};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::{process, thread};
 
 use anyhow::Error;
+use gst::prelude::*;
+use log::info;
 use m3u8_rs::{AlternativeMedia, AlternativeMediaType, MasterPlaylist, VariantStream};
 use tokio::runtime::Builder;
 
@@ -141,8 +140,23 @@ fn main() -> Result<(), Error> {
     {
         let state_lock = state.lock().unwrap();
 
+        let video_src = gst::parse::bin_from_description(
+            "videotestsrc is-live=true ! timeoverlay ! queue ! tee name=video_tee",
+            true,
+        )?;
+        pipeline
+            .add(&video_src)
+            .expect("Failed to add video_src to pipeline");
+        let video_tee = video_src
+            .by_name("video_tee")
+            .expect("tee element must exist");
+
         for stream in &state_lock.video_streams {
-            stream.setup(state.clone(), &pipeline, &path)?;
+            // request pad from tee for each stream
+            let video_src_pad =
+                gst::GhostPad::with_target(&video_tee.request_pad_simple("src_%u").unwrap())?;
+            video_src.add_pad(&video_src_pad).unwrap();
+            stream.setup(state.clone(), &pipeline, video_src_pad.upcast_ref(), &path)?;
         }
 
         for stream in &state_lock.audio_streams {

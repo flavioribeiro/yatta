@@ -1,13 +1,12 @@
-use gst::prelude::*;
 use std::{
     path::Path,
     sync::{Arc, Mutex},
 };
 
 use anyhow::Error;
-use chrono::TimeDelta;
+use gst::prelude::*;
 
-use crate::{hlscmaf, utils, State};
+use crate::{hlscmaf, State, utils};
 
 pub(crate) struct VideoStream {
     pub name: String,
@@ -22,12 +21,12 @@ impl VideoStream {
         &self,
         state: Arc<Mutex<State>>,
         pipeline: &gst::Pipeline,
+        video_src_pad: &gst::Pad,
         path: &Path,
     ) -> Result<(), Error> {
-        let src = gst::ElementFactory::make("videotestsrc")
-            .property("is-live", true)
+        let queue = gst::ElementFactory::make("queue")
+            .name(format!("{}-queue", self.codec))
             .build()?;
-
         let raw_capsfilter = gst::ElementFactory::make("capsfilter")
             .property(
                 "caps",
@@ -39,7 +38,6 @@ impl VideoStream {
                     .build(),
             )
             .build()?;
-        let timeoverlay = gst::ElementFactory::make("timeoverlay").build()?;
         let codec_burn_in = gst::ElementFactory::make("textoverlay")
             .property("text", &self.codec)
             .property("font-desc", "Sans 24")
@@ -56,9 +54,8 @@ impl VideoStream {
         let appsink = gst_app::AppSink::builder().buffer_list(true).build();
 
         pipeline.add_many([
-            &src,
+            &queue,
             &raw_capsfilter,
-            &timeoverlay,
             &codec_burn_in,
             &enc,
             &parser,
@@ -67,10 +64,12 @@ impl VideoStream {
             appsink.upcast_ref(),
         ])?;
 
+        video_src_pad
+            .link(&queue.static_pad("sink").unwrap())
+            .expect("Failed to link video_src_pad to queue");
         gst::Element::link_many([
-            &src,
+            &queue,
             &raw_capsfilter,
-            &timeoverlay,
             &codec_burn_in,
             &enc,
             &parser,
@@ -148,10 +147,10 @@ impl VideoStream {
                 if enc_factory.name() == "rav1enc" {
                     enc.set_property("speed-preset", 10u32);
                     enc.set_property("low-latency", true);
-                    enc.set_property(
-                        "max-key-frame-interval",
-                        gst::ClockTime::from_seconds(1).mseconds(),
-                    );
+                    // enc.set_property(
+                    //     "max-key-frame-interval",
+                    //     gst::ClockTime::from_seconds(1).mseconds(),
+                    // );
                     enc.set_property("bitrate", self.bitrate as i32);
                 }
                 parser = gst::ElementFactory::make("av1parse").build()?;
