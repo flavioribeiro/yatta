@@ -27,6 +27,7 @@ impl VideoStream {
         let queue = gst::ElementFactory::make("queue")
             .name(format!("{}-queue", self.codec))
             .build()?;
+        let videoscale = gst::ElementFactory::make("videoscale").build()?;
         let raw_capsfilter = gst::ElementFactory::make("capsfilter")
             .property(
                 "caps",
@@ -55,6 +56,7 @@ impl VideoStream {
 
         pipeline.add_many([
             &queue,
+            &videoscale,
             &raw_capsfilter,
             &codec_burn_in,
             &enc,
@@ -69,6 +71,7 @@ impl VideoStream {
             .expect("Failed to link video_src_pad to queue");
         gst::Element::link_many([
             &queue,
+            &videoscale,
             &raw_capsfilter,
             &codec_burn_in,
             &enc,
@@ -147,10 +150,10 @@ impl VideoStream {
                 if enc_factory.name() == "rav1enc" {
                     enc.set_property("speed-preset", 10u32);
                     enc.set_property("low-latency", true);
-                    // enc.set_property(
-                    //     "max-key-frame-interval",
-                    //     gst::ClockTime::from_seconds(1).mseconds(),
-                    // );
+                    enc.set_property(
+                        "max-key-frame-interval",
+                        gst::ClockTime::from_seconds(1).mseconds(),
+                    );
                     enc.set_property("bitrate", self.bitrate as i32);
                 }
                 parser = gst::ElementFactory::make("av1parse").build()?;

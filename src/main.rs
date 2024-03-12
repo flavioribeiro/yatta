@@ -1,5 +1,6 @@
 use std::{process, thread};
 use std::collections::HashMap;
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -7,6 +8,7 @@ use anyhow::Error;
 use gst::prelude::*;
 use log::info;
 use m3u8_rs::{AlternativeMedia, AlternativeMediaType, MasterPlaylist, VariantStream};
+use rand::random;
 use tokio::runtime::Builder;
 
 mod audio;
@@ -104,13 +106,13 @@ fn main() -> Result<(), Error> {
 
     let state = Arc::new(Mutex::new(State {
         video_streams: vec![
-            // video::VideoStream {
-            //     name: "av1_0".to_string(),
-            //     codec: "av1".to_string(),
-            //     bitrate: 1_024_000,
-            //     width: 256,
-            //     height: 144,
-            // },
+            video::VideoStream {
+                name: "av1_0".to_string(),
+                codec: "av1".to_string(),
+                bitrate: 1_024_000,
+                width: 256,
+                height: 144,
+            },
             video::VideoStream {
                 name: "h265_0".to_string(),
                 codec: "h265".to_string(),
@@ -137,13 +139,20 @@ fn main() -> Result<(), Error> {
         wrote_manifest: false,
     }));
 
+    // get the uri from the CLI arguments
+    let uri = std::env::args().nth(1).expect("Usage: yatta <uri>");
+
     {
         let state_lock = state.lock().unwrap();
 
         let video_src = gst::parse::bin_from_description(
-            "videotestsrc is-live=true ! timeoverlay ! queue ! tee name=video_tee",
+            "uridecodebin3 name=contentsrc ! videoconvert ! videoscale ! videorate ! timeoverlay ! video/x-raw ! queue ! tee name=video_tee",
             true,
         )?;
+        let contentsrc = video_src
+            .by_name("contentsrc")
+            .expect("contentsrc element must exist");
+        contentsrc.set_property("uri", &uri);
         pipeline
             .add(&video_src)
             .expect("Failed to add video_src to pipeline");
@@ -188,7 +197,9 @@ fn main() -> Result<(), Error> {
                 .enable_all()
                 .build()
                 .unwrap();
-            runtime.block_on(server::run(8080, pipeline_weak))
+            info!("Starting server");
+            runtime.block_on(server::run(8080, pipeline_weak));
+            info!("Server stopped");
         }
     });
 
@@ -210,6 +221,26 @@ fn main() -> Result<(), Error> {
                     err.error(),
                     err.debug().unwrap_or_else(|| "".into()),
                 );
+                let error_graph = server::dot_graph(&pipeline);
+                let mut dot_cmd = process::Command::new("dot")
+                    .arg("-Tpng")
+                    .stdin(process::Stdio::piped())
+                    .stdout(process::Stdio::piped())
+                    .spawn()
+                    .expect("Failed to start dot command");
+                dot_cmd
+                    .stdin
+                    .as_mut()
+                    .expect("Failed to open stdin")
+                    .write_all(error_graph.as_bytes())
+                    .expect("Failed to write to dot command");
+                let res = dot_cmd
+                    .wait_with_output()
+                    .expect("Failed to wait for dot command");
+                if res.status.success() {
+                    let error_file = format!("error_graph_{}.png", random::<u32>());
+                    std::fs::write(error_file, res.stdout).expect("Failed to write image");
+                }
                 break;
             }
             _ => (),

@@ -1,18 +1,21 @@
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::process::Stdio;
+use std::sync::Arc;
+
+use axum::{response, response::Html, Router, routing::get};
 use axum::extract::Extension;
-use axum::http::{header, StatusCode};
+use axum::http::{header, Method, StatusCode};
 use axum::response::IntoResponse;
-use axum::{response, response::Html, routing::get, Router};
 use gst::glib;
 use gst::glib::bitflags::Flags;
 use gst::prelude::*;
 use once_cell::unsync::Lazy;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::process::Stdio;
-use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 use tokio::sync::RwLock;
 use tower::ServiceBuilder;
+use tower_http::cors;
+use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
 type SharedState = Arc<RwLock<State>>;
@@ -29,12 +32,15 @@ impl State {
 
 pub async fn run(port: u16, pipeline_weak: glib::WeakRef<gst::Pipeline>) {
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), port);
+    // add CORS headers to files
+    let cors = CorsLayer::permissive();
     let hls_dir = ServeDir::new("hls_live_stream");
     let router = Router::new()
         .route("/healthcheck", get(healthcheck))
         .route("/pipeline-diagram", get(pipeline_diagram))
         .route("/pipeline-diagram.png", get(pipeline_diagram_image))
         .nest_service("/live", hls_dir.clone())
+        .layer(cors)
         .layer(
             ServiceBuilder::new()
                 .layer(Extension(SharedState::new(RwLock::new(State::new(
@@ -109,7 +115,7 @@ async fn pipeline_diagram_image(Extension(state): Extension<SharedState>) -> imp
     }
 }
 
-fn dot_graph(pipeline: &gst::Pipeline) -> String {
+pub fn dot_graph(pipeline: &gst::Pipeline) -> String {
     pipeline
         .debug_to_dot_data(gst::DebugGraphDetails::ALL)
         .to_string()

@@ -1,3 +1,4 @@
 /target
 Cargo.lock
 hls_live_stream
+error_graph_*
