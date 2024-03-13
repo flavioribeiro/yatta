@@ -1,4 +1,6 @@
 /target
 Cargo.lock
 hls_live_stream
+*.png
+*.dot
 error_graph_*

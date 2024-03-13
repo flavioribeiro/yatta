@@ -12,6 +12,7 @@ pub(crate) struct VideoStream {
     pub name: String,
     pub codec: String,
     pub bitrate: u64,
+    pub level: String,
     pub width: u64,
     pub height: u64,
 }
@@ -121,6 +122,9 @@ impl VideoStream {
                     enc.set_property("bframes", 0u32);
                     enc.set_property_from_str("tune", "zerolatency");
                 }
+                if enc.has_property("xcoder-params", None) {
+                    enc.set_property("xcoder-params", format!("bitrate={}", self.bitrate));
+                }
                 parser = gst::ElementFactory::make("h264parse").build()?;
                 capsfilter = gst::ElementFactory::make("capsfilter")
                     .property(
@@ -173,14 +177,15 @@ impl VideoStream {
                         ),
                     );
                 }
-                parser = gst::ElementFactory::make("av1parse").build()?;
+                parser = gst::ElementFactory::make("av1parse") // av1parse
+                    .name(format!("{}-av1parse", self.name))
+                    .build()?;
                 capsfilter = gst::ElementFactory::make("capsfilter")
                     .name(format!("{}-capsfilter", self.name))
                     .property(
                         "caps",
                         gst::Caps::builder("video/x-av1")
                             .field("profile", "main")
-                            .field("chroma-format", "4:0:0")
                             .build(),
                     )
                     .build()?;
