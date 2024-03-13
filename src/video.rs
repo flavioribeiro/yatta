@@ -126,7 +126,7 @@ impl VideoStream {
                     .property(
                         "caps",
                         gst::Caps::builder("video/x-h264")
-                            .field("profile", "main")
+                            .field("profile", "high")
                             .build(),
                     )
                     .build()?;
