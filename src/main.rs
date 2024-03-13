@@ -111,7 +111,26 @@ impl State {
     }
 }
 
+fn hw_encoders_init() {
+    match process::Command::new("sudo").arg("init_rsrc").output() {
+        Ok(output) => {
+            if output.status.success() {
+                info!("init_rsrc executed successfully");
+            } else {
+                warn!(
+                    "init_rsrc failed: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                );
+            }
+        }
+        Err(e) => {
+            warn!("failed to execute init_rsrc: {}", e);
+        }
+    }
+}
+
 fn main() -> Result<(), Error> {
+    hw_encoders_init();
     gst::init()?;
     env_logger::init();
 
