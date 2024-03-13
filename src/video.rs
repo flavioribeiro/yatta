@@ -168,7 +168,7 @@ impl VideoStream {
                     enc.set_property(
                         "xcoder-params",
                         format!(
-                            "profile=2:lowDelay=1:av1ErrorResilientMode=1:RcEnable=1:bitrate={}",
+                            "profile=1:high-tier=0:lowDelay=1:av1ErrorResilientMode=1:RcEnable=1:bitrate={}",
                             self.bitrate
                         ),
                     );
