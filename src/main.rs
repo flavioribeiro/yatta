@@ -291,7 +291,6 @@ fn main() -> Result<(), Error> {
                 break;
             }
             MessageView::Error(err) => {
-                pipeline.set_state(gst::State::Null)?;
                 eprintln!(
                     "Got error from {}: {} ({})",
                     msg.src()
@@ -320,6 +319,7 @@ fn main() -> Result<(), Error> {
                     let error_file = format!("error_graph_{}.png", random::<u32>());
                     std::fs::write(error_file, res.stdout).expect("Failed to write image");
                 }
+                pipeline.set_state(gst::State::Null)?;
                 break;
             }
             _ => (),
