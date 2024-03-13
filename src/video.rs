@@ -164,12 +164,22 @@ impl VideoStream {
                     );
                     enc.set_property("bitrate", self.bitrate as i32);
                 }
+                if enc.has_property("xcoder-params", None) {
+                    enc.set_property(
+                        "xcoder-params",
+                        format!(
+                            "profile=2:lowDelay=1:av1ErrorResilientMode=1:RcEnable=1:bitrate={}",
+                            self.bitrate
+                        ),
+                    );
+                }
                 parser = gst::ElementFactory::make("av1parse").build()?;
                 capsfilter = gst::ElementFactory::make("capsfilter")
+                    .name(format!("{}-capsfilter", self.name))
                     .property(
                         "caps",
                         gst::Caps::builder("video/x-av1")
-                            .field("profile", "high")
+                            .field("profile", "main")
                             .build(),
                     )
                     .build()?;
