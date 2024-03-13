@@ -151,6 +151,27 @@ fn main() -> Result<(), Error> {
             width: 640,
             height: 360,
         });
+        video_streams.push(video::VideoStream {
+            name: "h264_1".to_string(),
+            codec: "h264".to_string(),
+            bitrate: 10_224_000,
+            width: 3840,
+            height: 2160,
+        });
+        video_streams.push(video::VideoStream {
+            name: "h264_2".to_string(),
+            codec: "h264".to_string(),
+            bitrate: 5_120_000,
+            width: 1920,
+            height: 1080,
+        });
+        video_streams.push(video::VideoStream {
+            name: "h2643".to_string(),
+            codec: "h264".to_string(),
+            bitrate: 2_024_000,
+            width: 1280,
+            height: 720,
+        });
     }
 
     let state = Arc::new(Mutex::new(State {

@@ -25,16 +25,16 @@ impl VideoStream {
         path: &Path,
     ) -> Result<(), Error> {
         let queue = gst::ElementFactory::make("queue")
-            .name(format!("{}-queue", self.codec))
+            .name(format!("{}-queue", self.name))
             .build()?;
         let videoscale = gst::ElementFactory::make("videoscale")
-            .name(format!("{}-videoscale", self.codec))
+            .name(format!("{}-videoscale", self.name))
             .build()?;
         let videoconvert = gst::ElementFactory::make("videoconvert")
-            .name(format!("{}-videoconvert", self.codec))
+            .name(format!("{}-videoconvert", self.name))
             .build()?;
         let raw_capsfilter = gst::ElementFactory::make("capsfilter")
-            .name(format!("{}-video-capsfilter", self.codec))
+            .name(format!("{}-video-capsfilter", self.name))
             .property(
                 "caps",
                 gst_video::VideoCapsBuilder::new()
@@ -46,22 +46,22 @@ impl VideoStream {
             )
             .build()?;
         let codec_burn_in = gst::ElementFactory::make("textoverlay")
-            .name(format!("{}-textoverlay", self.codec))
-            .property("text", &self.codec)
+            .name(format!("{}-textoverlay", self.name))
+            .property("text", &self.name)
             .property("font-desc", "Sans 24")
             .build()?;
         let Ok((enc, parser, capsfilter)) = Self::setup_codec(self) else {
-            return Err(anyhow::anyhow!("Failed to setup codec: {}", self.codec));
+            return Err(anyhow::anyhow!("Failed to setup codec: {}", self.name));
         };
 
         let mux = gst::ElementFactory::make("isofmp4mux")
-            .name(format!("{}-isofmp4mux", self.codec))
+            .name(format!("{}-isofmp4mux", self.name))
             .property("fragment-duration", 2000.mseconds())
             .property_from_str("header-update-mode", "update")
             .property("write-mehd", true)
             .build()?;
         let appsink = gst_app::AppSink::builder()
-            .name(format!("{}-appsink", self.codec))
+            .name(format!("{}-appsink", self.name))
             .buffer_list(true)
             .build();
 
