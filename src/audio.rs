@@ -6,7 +6,7 @@ use std::{
 use anyhow::Error;
 use gst::prelude::*;
 
-use crate::{hlscmaf, State, utils};
+use crate::{hlscmaf, utils, State};
 
 pub(crate) struct AudioStream {
     pub name: String,

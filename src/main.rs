@@ -1,8 +1,8 @@
-use std::{process, thread};
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::{process, thread};
 
 use anyhow::Error;
 use gst::prelude::*;
