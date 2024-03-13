@@ -169,7 +169,7 @@ impl VideoStream {
                     .property(
                         "caps",
                         gst::Caps::builder("video/x-av1")
-                            .field("profile", "main")
+                            .field("profile", "high")
                             .build(),
                     )
                     .build()?;
