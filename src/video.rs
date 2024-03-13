@@ -21,7 +21,7 @@ impl VideoStream {
         &self,
         state: Arc<Mutex<State>>,
         pipeline: &gst::Pipeline,
-        video_src_pad: &gst::Pad,
+        src_pad: &gst::Pad,
         path: &Path,
     ) -> Result<(), Error> {
         let queue = gst::ElementFactory::make("queue")
@@ -66,7 +66,7 @@ impl VideoStream {
             appsink.upcast_ref(),
         ])?;
 
-        video_src_pad
+        src_pad
             .link(&queue.static_pad("sink").unwrap())
             .expect("Failed to link video_src_pad to queue");
         gst::Element::link_many([
@@ -150,6 +150,7 @@ impl VideoStream {
                 if enc_factory.name() == "rav1enc" {
                     enc.set_property("speed-preset", 10u32);
                     enc.set_property("low-latency", true);
+                    enc.set_property("error-resilient", true);
                     enc.set_property(
                         "max-key-frame-interval",
                         gst::ClockTime::from_seconds(1).mseconds(),

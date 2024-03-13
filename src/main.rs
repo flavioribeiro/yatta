@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::Error;
 use gst::prelude::*;
-use log::info;
+use log::{info, warn};
 use m3u8_rs::{AlternativeMedia, AlternativeMediaType, MasterPlaylist, VariantStream};
 use rand::random;
 use tokio::runtime::Builder;
@@ -145,18 +145,77 @@ fn main() -> Result<(), Error> {
     {
         let state_lock = state.lock().unwrap();
 
-        let video_src = gst::parse::bin_from_description(
-            "uridecodebin3 name=contentsrc ! videoconvert ! videoscale ! videorate ! timeoverlay ! video/x-raw ! queue ! tee name=video_tee",
-            true,
+        let media_src = gst::parse::bin_from_description(
+            "videoconvert name=vconv ! videoscale ! videorate ! timeoverlay ! video/x-raw ! queue ! tee name=video_tee",
+            false,
         )?;
-        let contentsrc = video_src
-            .by_name("contentsrc")
-            .expect("contentsrc element must exist");
-        contentsrc.set_property("uri", &uri);
+
+        let uridecodebin = gst::ElementFactory::make("uridecodebin")
+            .name("contentsrc")
+            .property("uri", &uri)
+            .build()?;
+
+        let video_caps_filter = media_src
+            .by_name("vconv")
+            .expect("vconv element must exist");
+
+        let audio_caps_filter = gst::ElementFactory::make("capsfilter")
+            .name("capsfilter")
+            .property("caps", &gst_audio::AudioCapsBuilder::new().build())
+            .build()
+            .unwrap();
+        let audio_conv = gst::ElementFactory::make("audioconvert").build().unwrap();
+        let audio_tee = gst::ElementFactory::make("tee")
+            .name("audio_tee")
+            .build()
+            .unwrap();
+
+        media_src
+            .add_many([&uridecodebin, &audio_caps_filter, &audio_conv, &audio_tee])
+            .unwrap();
+        gst::Element::link_many(&[&audio_caps_filter, &audio_conv, &audio_tee]).unwrap();
+
+        uridecodebin.connect_pad_added({
+            let video_weak = video_caps_filter.downgrade();
+            let audio_weak = audio_caps_filter.downgrade();
+            move |elem, pad| {
+                // check if pad is video
+                let Some(video_elem) = video_weak.upgrade() else {
+                    return;
+                };
+                let Some(audio_elem) = audio_weak.upgrade() else {
+                    return;
+                };
+                let pad_caps = pad.current_caps().unwrap().to_string();
+                info!("pad added with caps: {}", pad_caps);
+                if pad_caps.starts_with("video/") {
+                    let sinkpad = video_elem.static_pad("sink").unwrap();
+                    if sinkpad.is_linked() {
+                        warn!("video filter sinkpad already linked");
+                        return;
+                    }
+                    info!("Linking video filter to {}", pad.name());
+                    pad.link(&sinkpad).unwrap();
+                    info!("Linked video filter to {}", pad.name());
+                }
+
+                if pad_caps.starts_with("audio/") {
+                    let sinkpad = audio_elem.static_pad("sink").unwrap();
+                    if sinkpad.is_linked() {
+                        warn!("audio filter sinkpad already linked");
+                        return;
+                    }
+                    info!("Linking audio filter to {}", pad.name());
+                    pad.link(&sinkpad).unwrap();
+                    info!("Linked audio filter to {}", pad.name());
+                }
+            }
+        });
+
         pipeline
-            .add(&video_src)
+            .add(&media_src)
             .expect("Failed to add video_src to pipeline");
-        let video_tee = video_src
+        let video_tee = media_src
             .by_name("video_tee")
             .expect("tee element must exist");
 
@@ -164,12 +223,19 @@ fn main() -> Result<(), Error> {
             // request pad from tee for each stream
             let video_src_pad =
                 gst::GhostPad::with_target(&video_tee.request_pad_simple("src_%u").unwrap())?;
-            video_src.add_pad(&video_src_pad).unwrap();
+            media_src.add_pad(&video_src_pad).unwrap();
             stream.setup(state.clone(), &pipeline, video_src_pad.upcast_ref(), &path)?;
         }
 
         for stream in &state_lock.audio_streams {
-            stream.setup(state.clone(), &pipeline, &path)?;
+            // set different name for ghost pad
+            let audio_src_pad = gst::GhostPad::builder(gst::PadDirection::Src)
+                .name(&stream.name)
+                .with_target(&audio_tee.request_pad_simple("src_%u").unwrap())
+                .unwrap()
+                .build();
+            media_src.add_pad(&audio_src_pad).unwrap();
+            stream.setup(state.clone(), &pipeline, audio_src_pad.upcast_ref(), &path)?;
         }
     }
 
