@@ -180,6 +180,7 @@ impl VideoStream {
                         "caps",
                         gst::Caps::builder("video/x-av1")
                             .field("profile", "main")
+                            .field("chroma-format", "4:0:0")
                             .build(),
                     )
                     .build()?;
