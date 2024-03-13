@@ -146,7 +146,7 @@ fn main() -> Result<(), Error> {
         let state_lock = state.lock().unwrap();
 
         let media_src = gst::parse::bin_from_description(
-            "videoconvert name=vconv ! videoscale ! videorate ! timeoverlay ! video/x-raw ! queue ! tee name=video_tee",
+            "videoconvert name=vconv ! videoscale ! videorate ! timeoverlay ! tee name=video_tee",
             false,
         )?;
 
