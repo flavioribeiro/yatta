@@ -136,7 +136,28 @@ fn main() -> Result<(), Error> {
     }
     if !args.disable_h265 {
         video_streams.push(video::VideoStream {
-            name: "h265_0".to_string(),
+            name: "h265_1".to_string(),
+            codec: "h265".to_string(),
+            bitrate: 10_224_000,
+            width: 3840,
+            height: 2160,
+        });
+        video_streams.push(video::VideoStream {
+            name: "h265_2".to_string(),
+            codec: "h265".to_string(),
+            bitrate: 5_120_000,
+            width: 1920,
+            height: 1080,
+        });
+        video_streams.push(video::VideoStream {
+            name: "h265_3".to_string(),
+            codec: "h265".to_string(),
+            bitrate: 2_024_000,
+            width: 1280,
+            height: 720,
+        });
+        video_streams.push(video::VideoStream {
+            name: "h265_4".to_string(),
             codec: "h265".to_string(),
             bitrate: 1_024_000,
             width: 640,
@@ -144,13 +165,6 @@ fn main() -> Result<(), Error> {
         });
     }
     if !args.disable_h264 {
-        video_streams.push(video::VideoStream {
-            name: "h264_0".to_string(),
-            codec: "h264".to_string(),
-            bitrate: 1_024_000,
-            width: 640,
-            height: 360,
-        });
         video_streams.push(video::VideoStream {
             name: "h264_1".to_string(),
             codec: "h264".to_string(),
@@ -166,11 +180,18 @@ fn main() -> Result<(), Error> {
             height: 1080,
         });
         video_streams.push(video::VideoStream {
-            name: "h2643".to_string(),
+            name: "h264_3".to_string(),
             codec: "h264".to_string(),
             bitrate: 2_024_000,
             width: 1280,
             height: 720,
+        });
+        video_streams.push(video::VideoStream {
+            name: "h264_4".to_string(),
+            codec: "h264".to_string(),
+            bitrate: 1_024_000,
+            width: 640,
+            height: 360,
         });
     }
 
