@@ -27,8 +27,14 @@ impl VideoStream {
         let queue = gst::ElementFactory::make("queue")
             .name(format!("{}-queue", self.codec))
             .build()?;
-        let videoscale = gst::ElementFactory::make("videoscale").build()?;
+        let videoscale = gst::ElementFactory::make("videoscale")
+            .name(format!("{}-videoscale", self.codec))
+            .build()?;
+        let videoconvert = gst::ElementFactory::make("videoconvert")
+            .name(format!("{}-videoconvert", self.codec))
+            .build()?;
         let raw_capsfilter = gst::ElementFactory::make("capsfilter")
+            .name(format!("{}-video-capsfilter", self.codec))
             .property(
                 "caps",
                 gst_video::VideoCapsBuilder::new()
@@ -40,6 +46,7 @@ impl VideoStream {
             )
             .build()?;
         let codec_burn_in = gst::ElementFactory::make("textoverlay")
+            .name(format!("{}-textoverlay", self.codec))
             .property("text", &self.codec)
             .property("font-desc", "Sans 24")
             .build()?;
@@ -48,15 +55,20 @@ impl VideoStream {
         };
 
         let mux = gst::ElementFactory::make("isofmp4mux")
+            .name(format!("{}-isofmp4mux", self.codec))
             .property("fragment-duration", 2000.mseconds())
             .property_from_str("header-update-mode", "update")
             .property("write-mehd", true)
             .build()?;
-        let appsink = gst_app::AppSink::builder().buffer_list(true).build();
+        let appsink = gst_app::AppSink::builder()
+            .name(format!("{}-appsink", self.codec))
+            .buffer_list(true)
+            .build();
 
         pipeline.add_many([
             &queue,
             &videoscale,
+            &videoconvert,
             &raw_capsfilter,
             &codec_burn_in,
             &enc,
@@ -72,6 +84,7 @@ impl VideoStream {
         gst::Element::link_many([
             &queue,
             &videoscale,
+            &videoconvert,
             &raw_capsfilter,
             &codec_burn_in,
             &enc,
