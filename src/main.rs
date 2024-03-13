@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::{process, thread};
 
 use anyhow::Error;
+use clap::Parser;
 use gst::prelude::*;
 use log::{info, warn};
 use m3u8_rs::{AlternativeMedia, AlternativeMediaType, MasterPlaylist, VariantStream};
@@ -16,6 +17,23 @@ mod hlscmaf;
 mod server;
 mod utils;
 mod video;
+
+/// Yatta live encoder
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct CliArguments {
+    #[clap(required = true)]
+    uri: String,
+
+    #[clap(long)]
+    disable_av1: bool,
+
+    #[clap(long)]
+    disable_h265: bool,
+
+    #[clap(long)]
+    disable_h264: bool,
+}
 
 struct State {
     video_streams: Vec<video::VideoStream>,
@@ -101,33 +119,42 @@ fn main() -> Result<(), Error> {
     let pipeline = gst::Pipeline::default();
     std::fs::create_dir_all(&path).expect("failed to create directory");
 
+    let args = CliArguments::parse();
+
     let mut manifest_path = path.clone();
     manifest_path.push("manifest.m3u8");
 
+    let mut video_streams = Vec::new();
+    if !args.disable_av1 {
+        video_streams.push(video::VideoStream {
+            name: "av1_0".to_string(),
+            codec: "av1".to_string(),
+            bitrate: 1_024_000,
+            width: 256,
+            height: 144,
+        });
+    }
+    if !args.disable_h265 {
+        video_streams.push(video::VideoStream {
+            name: "h265_0".to_string(),
+            codec: "h265".to_string(),
+            bitrate: 1_024_000,
+            width: 640,
+            height: 360,
+        });
+    }
+    if !args.disable_h264 {
+        video_streams.push(video::VideoStream {
+            name: "h264_0".to_string(),
+            codec: "h264".to_string(),
+            bitrate: 1_024_000,
+            width: 640,
+            height: 360,
+        });
+    }
+
     let state = Arc::new(Mutex::new(State {
-        video_streams: vec![
-            video::VideoStream {
-                name: "av1_0".to_string(),
-                codec: "av1".to_string(),
-                bitrate: 1_024_000,
-                width: 256,
-                height: 144,
-            },
-            video::VideoStream {
-                name: "h265_0".to_string(),
-                codec: "h265".to_string(),
-                bitrate: 1_024_000,
-                width: 640,
-                height: 360,
-            },
-            video::VideoStream {
-                name: "h264_0".to_string(),
-                codec: "h264".to_string(),
-                bitrate: 1_024_000,
-                width: 640,
-                height: 360,
-            },
-        ],
+        video_streams,
         audio_streams: vec![audio::AudioStream {
             name: "audio_0".to_string(),
             lang: "en".to_string(),
@@ -139,14 +166,12 @@ fn main() -> Result<(), Error> {
     }));
 
     // get the uri from the CLI arguments
-    let uri = std::env::args().nth(1).expect("Usage: yatta <uri>");
-
     {
         let state_lock = state.lock().unwrap();
 
         let uridecodebin = gst::ElementFactory::make("uridecodebin")
             .name("contentsrc")
-            .property("uri", &uri)
+            .property("uri", &args.uri)
             .build()
             .unwrap();
 

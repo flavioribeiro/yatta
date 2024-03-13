@@ -12,6 +12,7 @@ path = "./src/main.rs"
 anyhow = "1"
 m3u8-rs = "5.0"
 chrono = "0.4"
+clap = { version = "4", features = ["derive"] }
 gst = { package = "gstreamer", version = "0.22.2", features = ["v1_18"] }
 gst-app = { package = "gstreamer-app", version = "0.22.0", features = ["v1_18"] }
 gst-base = { package = "gstreamer-base", version = "0.22.0", features = ["v1_18"] }
