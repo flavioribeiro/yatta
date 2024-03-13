@@ -104,9 +104,6 @@ impl VideoStream {
                 if enc.has_property("realtime", None) {
                     enc.set_property("realtime", true);
                 }
-                // if enc.has_property("max-keyframe-interval-duration", None) {
-                //     enc.set_property("max-keyframe-interval-duration", gst::ClockTime::from_seconds(1).mseconds());
-                // }
                 if enc_factory.name() == "x264enc" {
                     enc.set_property("bframes", 0u32);
                     enc.set_property_from_str("tune", "zerolatency");
@@ -129,9 +126,6 @@ impl VideoStream {
                 if enc.has_property("realtime", None) {
                     enc.set_property("realtime", true);
                 }
-                // if enc.has_property("max-keyframe-interval-duration", None) {
-                //     enc.set_property("max-keyframe-interval-duration", gst::ClockTime::from_seconds(1).mseconds());
-                // }
                 if enc_factory.name() == "x264enc" {
                     enc.set_property_from_str("tune", "zerolatency");
                 }
