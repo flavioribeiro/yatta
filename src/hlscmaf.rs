@@ -1,17 +1,14 @@
-use anyhow::Error;
-use std::io::Read;
 use std::{
     collections::VecDeque,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
 
-use m3u8_rs::{MediaPlaylist, MediaSegment};
-
+use anyhow::Error;
 use chrono::{DateTime, Duration, TimeDelta, Utc};
-use gst::glib::bitflags::Flags;
 use gst::prelude::*;
 use log::info;
+use m3u8_rs::{MediaPlaylist, MediaSegment};
 
 struct StreamState<P>
 where

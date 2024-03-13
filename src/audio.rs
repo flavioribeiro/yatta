@@ -6,13 +6,12 @@ use std::{
 use anyhow::Error;
 use gst::prelude::*;
 
-use crate::{hlscmaf, utils, State};
+use crate::{hlscmaf, State, utils};
 
 pub(crate) struct AudioStream {
     pub name: String,
     pub lang: String,
     pub default: bool,
-    pub wave: String,
 }
 
 impl AudioStream {
@@ -23,10 +22,6 @@ impl AudioStream {
         src_pad: &gst::Pad,
         path: &Path,
     ) -> Result<(), Error> {
-        // let src = gst::ElementFactory::make("audiotestsrc")
-        //     .property("is-live", true)
-        //     .property_from_str("wave", &self.wave)
-        //     .build()?;
         let queue = gst::ElementFactory::make("queue")
             .name(format!("{}-queue", self.name))
             .build()?;

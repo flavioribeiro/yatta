@@ -4,17 +4,14 @@ use std::sync::Arc;
 
 use axum::{response, response::Html, Router, routing::get};
 use axum::extract::Extension;
-use axum::http::{header, Method, StatusCode};
+use axum::http::{header, StatusCode};
 use axum::response::IntoResponse;
 use gst::glib;
-use gst::glib::bitflags::Flags;
 use gst::prelude::*;
-use once_cell::unsync::Lazy;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 use tokio::sync::RwLock;
 use tower::ServiceBuilder;
-use tower_http::cors;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
