@@ -171,7 +171,18 @@ fn encoder_for_codec(codec: &String) -> Option<gst::ElementFactory> {
     let encoders =
         gst::ElementFactory::factories_with_type(gst::ElementFactoryType::ENCODER, gst::Rank::NONE);
     let caps = gst::Caps::new_empty_simple(format!("video/x-{}", codec));
-    encoders
+    // sort encoders if name starts with niquadra
+    let sorted_encoders = encoders
+        .iter()
+        .filter(|factory| factory.name().starts_with("niquadra"))
+        .chain(
+            encoders
+                .iter()
+                .filter(|factory| !factory.name().starts_with("niquadra")),
+        )
+        .cloned()
+        .collect::<Vec<_>>();
+    sorted_encoders
         .iter()
         .find(|factory| {
             factory.static_pad_templates().iter().any(|template| {
