@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::{
     path::Path,
     sync::{Arc, Mutex},
@@ -8,13 +9,42 @@ use gst::prelude::*;
 
 use crate::{hlscmaf, utils, State};
 
+#[derive(Debug, Clone)]
 pub(crate) struct VideoStream {
     pub name: String,
-    pub codec: String,
+    pub codec: VideoCodec,
     pub bitrate: u64,
     pub level: String,
     pub width: u64,
     pub height: u64,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum VideoCodec {
+    H264,
+    H265,
+    AV1,
+}
+
+impl VideoCodec {
+    pub fn caps(&self) -> gst::Caps {
+        match self {
+            VideoCodec::H264 => gst::Caps::builder("video/x-h264").build(),
+            VideoCodec::H265 => gst::Caps::builder("video/x-h265").build(),
+            VideoCodec::AV1 => gst::Caps::builder("video/x-av1").build(),
+        }
+    }
+}
+
+impl Display for VideoCodec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            VideoCodec::H264 => "h264".to_string(),
+            VideoCodec::H265 => "h265".to_string(),
+            VideoCodec::AV1 => "av1".to_string(),
+        };
+        write!(f, "{}", str)
+    }
 }
 
 impl VideoStream {
@@ -55,12 +85,17 @@ impl VideoStream {
             return Err(anyhow::anyhow!("Failed to setup codec: {}", self.name));
         };
 
-        let mux = gst::ElementFactory::make("isofmp4mux")
-            .name(format!("{}-isofmp4mux", self.name))
+        let mux = {
+            if self.codec == VideoCodec::AV1 {
+                gst::ElementFactory::make("isofmp4mux").name(format!("{}-isofmp4mux", self.name))
+            } else {
+                gst::ElementFactory::make("cmafmux").name(format!("{}-cmafmux", self.name))
+            }
             .property("fragment-duration", 2000.mseconds())
             .property_from_str("header-update-mode", "update")
             .property("write-mehd", true)
-            .build()?;
+            .build()?
+        };
         let appsink = gst_app::AppSink::builder()
             .name(format!("{}-appsink", self.name))
             .buffer_list(true)
@@ -106,12 +141,12 @@ impl VideoStream {
         let parser: gst::Element;
         let capsfilter: gst::Element;
 
-        let enc_factory = encoder_for_codec(&self.codec)
+        let enc_factory = encoder_for_codec(self.codec)
             .expect(&format!("No encoder found for codec: {}", self.codec));
         let enc = enc_factory.create().build()?;
 
-        match self.codec.as_ref() {
-            "h264" => {
+        match self.codec {
+            VideoCodec::H264 => {
                 if enc.has_property("bitrate", None) {
                     enc.set_property("bitrate", self.bitrate as u32 / 1000u32);
                 }
@@ -139,7 +174,7 @@ impl VideoStream {
                     .build()?;
                 Ok((enc, parser, capsfilter))
             }
-            "h265" => {
+            VideoCodec::H265 => {
                 if enc.has_property("bitrate", None) {
                     enc.set_property("bitrate", self.bitrate as u32 / 1000u32);
                 }
@@ -166,7 +201,7 @@ impl VideoStream {
                     .build()?;
                 Ok((enc, parser, capsfilter))
             }
-            "av1" => {
+            VideoCodec::AV1 => {
                 if enc_factory.name() == "rav1enc" {
                     enc.set_property("speed-preset", 10u32);
                     enc.set_property("low-latency", true);
@@ -200,15 +235,14 @@ impl VideoStream {
                     .build()?;
                 Ok((enc, parser, capsfilter))
             }
-            &_ => todo!(),
         }
     }
 }
 
-fn encoder_for_codec(codec: &String) -> Option<gst::ElementFactory> {
+fn encoder_for_codec(codec: VideoCodec) -> Option<gst::ElementFactory> {
     let encoders =
         gst::ElementFactory::factories_with_type(gst::ElementFactoryType::ENCODER, gst::Rank::NONE);
-    let caps = gst::Caps::new_empty_simple(format!("video/x-{}", codec));
+    let caps = codec.caps();
     // sort encoders if name starts with niquadra
     let sorted_encoders = encoders
         .iter()

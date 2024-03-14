@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::{process, thread};
 
+use crate::video::VideoCodec;
 use anyhow::Error;
 use clap::Parser;
 use gst::prelude::*;
@@ -147,7 +148,7 @@ fn main() -> Result<(), Error> {
     if !args.disable_av1 {
         video_streams.push(video::VideoStream {
             name: "av1_0".to_string(),
-            codec: "av1".to_string(),
+            codec: VideoCodec::AV1,
             bitrate: 1_024_000,
             level: "".to_string(),
             width: 256,
@@ -157,7 +158,7 @@ fn main() -> Result<(), Error> {
     if !args.disable_h265 {
         video_streams.push(video::VideoStream {
             name: "h265_1".to_string(),
-            codec: "h265".to_string(),
+            codec: VideoCodec::H265,
             bitrate: 8_000_000,
             level: "5.0".to_string(),
             width: 3840,
@@ -165,7 +166,7 @@ fn main() -> Result<(), Error> {
         });
         video_streams.push(video::VideoStream {
             name: "h265_2".to_string(),
-            codec: "h265".to_string(),
+            codec: VideoCodec::H265,
             bitrate: 4_000_000,
             level: "5.0".to_string(),
             width: 3840,
@@ -173,7 +174,7 @@ fn main() -> Result<(), Error> {
         });
         video_streams.push(video::VideoStream {
             name: "h265_3".to_string(),
-            codec: "h265".to_string(),
+            codec: VideoCodec::H265,
             bitrate: 2_000_000,
             level: "5.0".to_string(),
             width: 2560,
@@ -181,7 +182,7 @@ fn main() -> Result<(), Error> {
         });
         video_streams.push(video::VideoStream {
             name: "h265_4".to_string(),
-            codec: "h265".to_string(),
+            codec: VideoCodec::H265,
             bitrate: 3_000_000,
             level: "4.0".to_string(),
             width: 1920,
@@ -189,7 +190,7 @@ fn main() -> Result<(), Error> {
         });
         video_streams.push(video::VideoStream {
             name: "h265_5".to_string(),
-            codec: "h265".to_string(),
+            codec: VideoCodec::H265,
             bitrate: 1_000_000,
             level: "4.0".to_string(),
             width: 1920,
@@ -197,7 +198,7 @@ fn main() -> Result<(), Error> {
         });
         video_streams.push(video::VideoStream {
             name: "h265_6".to_string(),
-            codec: "h265".to_string(),
+            codec: VideoCodec::H265,
             bitrate: 2_000_000,
             level: "3.1".to_string(),
             width: 1280,
@@ -205,7 +206,7 @@ fn main() -> Result<(), Error> {
         });
         video_streams.push(video::VideoStream {
             name: "h265_7".to_string(),
-            codec: "h265".to_string(),
+            codec: VideoCodec::H265,
             bitrate: 750_000,
             level: "3.1".to_string(),
             width: 1280,
@@ -213,7 +214,7 @@ fn main() -> Result<(), Error> {
         });
         video_streams.push(video::VideoStream {
             name: "h265_8".to_string(),
-            codec: "h265".to_string(),
+            codec: VideoCodec::H265,
             bitrate: 450_000,
             level: "3.0".to_string(),
             width: 960,
@@ -221,7 +222,7 @@ fn main() -> Result<(), Error> {
         });
         video_streams.push(video::VideoStream {
             name: "h265_9".to_string(),
-            codec: "h265".to_string(),
+            codec: VideoCodec::H265,
             bitrate: 300_000,
             level: "3.0".to_string(),
             width: 640,
@@ -229,7 +230,7 @@ fn main() -> Result<(), Error> {
         });
         video_streams.push(video::VideoStream {
             name: "h265_10".to_string(),
-            codec: "h265".to_string(),
+            codec: VideoCodec::H265,
             bitrate: 200_000,
             level: "3.0".to_string(),
             width: 640,
@@ -239,7 +240,7 @@ fn main() -> Result<(), Error> {
     if !args.disable_h264 {
         video_streams.push(video::VideoStream {
             name: "h264_1".to_string(),
-            codec: "h264".to_string(),
+            codec: VideoCodec::H264,
             bitrate: 6_000_000,
             level: "4.0".to_string(),
             width: 1920,
@@ -247,7 +248,7 @@ fn main() -> Result<(), Error> {
         });
         video_streams.push(video::VideoStream {
             name: "h264_2".to_string(),
-            codec: "h264".to_string(),
+            codec: VideoCodec::H264,
             bitrate: 3_000_000,
             level: "4.0".to_string(),
             width: 1920,
@@ -255,7 +256,7 @@ fn main() -> Result<(), Error> {
         });
         video_streams.push(video::VideoStream {
             name: "h264_3".to_string(),
-            codec: "h264".to_string(),
+            codec: VideoCodec::H264,
             bitrate: 3_000_000,
             level: "3.1".to_string(),
             width: 1280,
@@ -263,7 +264,7 @@ fn main() -> Result<(), Error> {
         });
         video_streams.push(video::VideoStream {
             name: "h264_4".to_string(),
-            codec: "h264".to_string(),
+            codec: VideoCodec::H264,
             bitrate: 1_500_000,
             level: "3.1".to_string(),
             width: 1280,
@@ -271,7 +272,7 @@ fn main() -> Result<(), Error> {
         });
         video_streams.push(video::VideoStream {
             name: "h264_5".to_string(),
-            codec: "h264".to_string(),
+            codec: VideoCodec::H264,
             bitrate: 1_500_000,
             level: "3.1".to_string(),
             width: 960,
@@ -279,7 +280,7 @@ fn main() -> Result<(), Error> {
         });
         video_streams.push(video::VideoStream {
             name: "h264_6".to_string(),
-            codec: "h264".to_string(),
+            codec: VideoCodec::H264,
             bitrate: 750_000,
             level: "3.1".to_string(),
             width: 960,
@@ -287,7 +288,7 @@ fn main() -> Result<(), Error> {
         });
         video_streams.push(video::VideoStream {
             name: "h264_7".to_string(),
-            codec: "h264".to_string(),
+            codec: VideoCodec::H264,
             bitrate: 450_000,
             level: "3.0".to_string(),
             width: 640,
@@ -295,7 +296,7 @@ fn main() -> Result<(), Error> {
         });
         video_streams.push(video::VideoStream {
             name: "h264_8".to_string(),
-            codec: "h264".to_string(),
+            codec: VideoCodec::H264,
             bitrate: 300_000,
             level: "3.0".to_string(),
             width: 640,
@@ -303,7 +304,7 @@ fn main() -> Result<(), Error> {
         });
         video_streams.push(video::VideoStream {
             name: "h264_9".to_string(),
-            codec: "h264".to_string(),
+            codec: VideoCodec::H264,
             bitrate: 200_000,
             level: "3.0".to_string(),
             width: 640,
