@@ -149,6 +149,12 @@ impl VideoStream {
                 if enc_factory.name() == "x264enc" {
                     enc.set_property_from_str("tune", "zerolatency");
                 }
+                if enc.has_property("xcoder-params", None) {
+                    enc.set_property(
+                        "xcoder-params",
+                        format!("RcEnable=1:gopPresetIdx=9:bitrate={}", self.bitrate),
+                    );
+                }
                 parser = gst::ElementFactory::make("h265parse").build()?;
                 capsfilter = gst::ElementFactory::make("capsfilter")
                     .property(

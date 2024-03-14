@@ -339,6 +339,9 @@ fn main() -> Result<(), Error> {
             .unwrap();
         let video_scale = gst::ElementFactory::make("videoscale").build().unwrap();
         let video_rate = gst::ElementFactory::make("videorate").build().unwrap();
+        let timecode = gst::ElementFactory::make("timecodestamper")
+            .build()
+            .unwrap();
         let timeoverlay = gst::ElementFactory::make("timeoverlay").build().unwrap();
         let video_tee = gst::ElementFactory::make("tee")
             .name("video_tee")
@@ -362,6 +365,7 @@ fn main() -> Result<(), Error> {
                 &video_head,
                 &video_scale,
                 &video_rate,
+                &timecode,
                 &timeoverlay,
                 &video_tee,
                 &audio_head,
@@ -373,6 +377,7 @@ fn main() -> Result<(), Error> {
             &video_head,
             &video_scale,
             &video_rate,
+            &timecode,
             &timeoverlay,
             &video_tee,
         ])
