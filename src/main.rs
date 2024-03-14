@@ -159,7 +159,7 @@ fn main() -> Result<(), Error> {
             name: "h265_1".to_string(),
             codec: "h265".to_string(),
             bitrate: 8_000_000,
-            level: "".to_string(),
+            level: "5.0".to_string(),
             width: 3840,
             height: 2160,
         });
@@ -167,7 +167,7 @@ fn main() -> Result<(), Error> {
             name: "h265_2".to_string(),
             codec: "h265".to_string(),
             bitrate: 4_000_000,
-            level: "".to_string(),
+            level: "5.0".to_string(),
             width: 3840,
             height: 2160,
         });
@@ -175,7 +175,7 @@ fn main() -> Result<(), Error> {
             name: "h265_3".to_string(),
             codec: "h265".to_string(),
             bitrate: 2_000_000,
-            level: "".to_string(),
+            level: "5.0".to_string(),
             width: 2560,
             height: 1440,
         });
@@ -183,7 +183,7 @@ fn main() -> Result<(), Error> {
             name: "h265_4".to_string(),
             codec: "h265".to_string(),
             bitrate: 3_000_000,
-            level: "".to_string(),
+            level: "4.0".to_string(),
             width: 1920,
             height: 1080,
         });
@@ -191,7 +191,7 @@ fn main() -> Result<(), Error> {
             name: "h265_5".to_string(),
             codec: "h265".to_string(),
             bitrate: 1_000_000,
-            level: "".to_string(),
+            level: "4.0".to_string(),
             width: 1920,
             height: 1080,
         });
@@ -199,7 +199,7 @@ fn main() -> Result<(), Error> {
             name: "h265_6".to_string(),
             codec: "h265".to_string(),
             bitrate: 2_000_000,
-            level: "".to_string(),
+            level: "3.1".to_string(),
             width: 1280,
             height: 720,
         });
@@ -207,7 +207,7 @@ fn main() -> Result<(), Error> {
             name: "h265_7".to_string(),
             codec: "h265".to_string(),
             bitrate: 750_000,
-            level: "".to_string(),
+            level: "3.1".to_string(),
             width: 1280,
             height: 720,
         });
@@ -215,7 +215,7 @@ fn main() -> Result<(), Error> {
             name: "h265_8".to_string(),
             codec: "h265".to_string(),
             bitrate: 450_000,
-            level: "".to_string(),
+            level: "3.0".to_string(),
             width: 960,
             height: 540,
         });
@@ -223,7 +223,7 @@ fn main() -> Result<(), Error> {
             name: "h265_9".to_string(),
             codec: "h265".to_string(),
             bitrate: 300_000,
-            level: "".to_string(),
+            level: "3.0".to_string(),
             width: 640,
             height: 360,
         });
@@ -231,7 +231,7 @@ fn main() -> Result<(), Error> {
             name: "h265_10".to_string(),
             codec: "h265".to_string(),
             bitrate: 200_000,
-            level: "".to_string(),
+            level: "3.0".to_string(),
             width: 640,
             height: 360,
         });
@@ -241,15 +241,7 @@ fn main() -> Result<(), Error> {
             name: "h264_1".to_string(),
             codec: "h264".to_string(),
             bitrate: 6_000_000,
-            level: "".to_string(),
-            width: 1920,
-            height: 1080,
-        });
-        video_streams.push(video::VideoStream {
-            name: "h264_1".to_string(),
-            codec: "h264".to_string(),
-            bitrate: 3_000_000,
-            level: "".to_string(),
+            level: "4.0".to_string(),
             width: 1920,
             height: 1080,
         });
@@ -257,15 +249,15 @@ fn main() -> Result<(), Error> {
             name: "h264_2".to_string(),
             codec: "h264".to_string(),
             bitrate: 3_000_000,
-            level: "".to_string(),
-            width: 1280,
-            height: 720,
+            level: "4.0".to_string(),
+            width: 1920,
+            height: 1080,
         });
         video_streams.push(video::VideoStream {
             name: "h264_3".to_string(),
             codec: "h264".to_string(),
             bitrate: 3_000_000,
-            level: "".to_string(),
+            level: "3.1".to_string(),
             width: 1280,
             height: 720,
         });
@@ -273,7 +265,7 @@ fn main() -> Result<(), Error> {
             name: "h264_4".to_string(),
             codec: "h264".to_string(),
             bitrate: 1_500_000,
-            level: "".to_string(),
+            level: "3.1".to_string(),
             width: 1280,
             height: 720,
         });
@@ -281,7 +273,7 @@ fn main() -> Result<(), Error> {
             name: "h264_5".to_string(),
             codec: "h264".to_string(),
             bitrate: 1_500_000,
-            level: "".to_string(),
+            level: "3.1".to_string(),
             width: 960,
             height: 540,
         });
@@ -289,7 +281,7 @@ fn main() -> Result<(), Error> {
             name: "h264_6".to_string(),
             codec: "h264".to_string(),
             bitrate: 750_000,
-            level: "".to_string(),
+            level: "3.1".to_string(),
             width: 960,
             height: 540,
         });
@@ -297,7 +289,7 @@ fn main() -> Result<(), Error> {
             name: "h264_7".to_string(),
             codec: "h264".to_string(),
             bitrate: 450_000,
-            level: "".to_string(),
+            level: "3.0".to_string(),
             width: 640,
             height: 360,
         });
@@ -305,7 +297,7 @@ fn main() -> Result<(), Error> {
             name: "h264_8".to_string(),
             codec: "h264".to_string(),
             bitrate: 300_000,
-            level: "".to_string(),
+            level: "3.0".to_string(),
             width: 640,
             height: 360,
         });
@@ -313,7 +305,7 @@ fn main() -> Result<(), Error> {
             name: "h264_9".to_string(),
             codec: "h264".to_string(),
             bitrate: 200_000,
-            level: "".to_string(),
+            level: "3.0".to_string(),
             width: 640,
             height: 360,
         });

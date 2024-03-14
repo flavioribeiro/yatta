@@ -122,12 +122,12 @@ impl VideoStream {
                     enc.set_property("bframes", 0u32);
                     enc.set_property_from_str("tune", "zerolatency");
                 }
-                // if enc.has_property("xcoder-params", None) {
-                //     enc.set_property(
-                //         "xcoder-params",
-                //         format!("RcEnable=1:gopPresetIdx=9:bitrate={}", self.bitrate),
-                //     );
-                // }
+                if enc.has_property("xcoder-params", None) {
+                    enc.set_property(
+                        "xcoder-params",
+                        format!("RcEnable=1:gopPresetIdx=9:bitrate={}", self.bitrate),
+                    );
+                }
                 parser = gst::ElementFactory::make("h264parse").build()?;
                 capsfilter = gst::ElementFactory::make("capsfilter")
                     .property(
