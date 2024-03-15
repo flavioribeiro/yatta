@@ -242,20 +242,27 @@ impl VideoStream {
 
 fn encoder_for_codec(codec: VideoCodec) -> Option<gst::ElementFactory> {
     let encoders =
-        gst::ElementFactory::factories_with_type(gst::ElementFactoryType::ENCODER, gst::Rank::NONE);
+        gst::ElementFactory::factories_with_type(gst::ElementFactoryType::ENCODER, gst::Rank::NONE)
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>();
     let caps = codec.caps();
     // sort encoders if name starts with niquadra
-    let sorted_encoders = encoders
-        .iter()
-        .filter(|factory| factory.name().starts_with("niquadra"))
-        .chain(
-            encoders
-                .iter()
-                .filter(|factory| !factory.name().starts_with("niquadra")),
-        )
-        .cloned()
-        .collect::<Vec<_>>();
-    sorted_encoders
+    let encoders = if codec != VideoCodec::AV1 {
+        encoders
+            .iter()
+            .filter(|factory| factory.name().starts_with("niquadra"))
+            .chain(
+                encoders
+                    .iter()
+                    .filter(|factory| !factory.name().starts_with("niquadra")),
+            )
+            .cloned()
+            .collect::<Vec<_>>()
+    } else {
+        encoders
+    };
+    encoders
         .iter()
         .find(|factory| {
             factory.static_pad_templates().iter().any(|template| {
