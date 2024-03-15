@@ -226,7 +226,7 @@ where
         .expect("Failed to write media playlist");
     state
         .publisher
-        .publish_manifest(&format!("{}.m3u8", state.stream_name), &manifest_contents)
+        .publish_manifest("manifest.m3u8", &manifest_contents)
         .unwrap();
 }
 

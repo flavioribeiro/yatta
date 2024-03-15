@@ -63,7 +63,7 @@ impl State {
                 .map(|stream| {
                     let mut path = PathBuf::new();
                     path.push(&stream.name);
-                    path.push(stream.manifest_path());
+                    path.push("manifest.m3u8");
 
                     VariantStream {
                         uri: path.as_path().display().to_string(),
@@ -84,7 +84,7 @@ impl State {
                 .map(|stream| {
                     let mut path = PathBuf::new();
                     path.push(&stream.name);
-                    path.push(stream.manifest_path());
+                    path.push("manifest.m3u8");
 
                     AlternativeMedia {
                         media_type: AlternativeMediaType::Audio,
@@ -244,70 +244,70 @@ fn main() -> Result<(), Error> {
             width: 1920,
             height: 1080,
         });
-        // video_streams.push(video::VideoStream {
-        //     name: "h264_2".to_string(),
-        //     codec: VideoCodec::H264,
-        //     bitrate: 3_000_000,
-        //     level: "4.0".to_string(),
-        //     width: 1920,
-        //     height: 1080,
-        // });
-        // video_streams.push(video::VideoStream {
-        //     name: "h264_3".to_string(),
-        //     codec: VideoCodec::H264,
-        //     bitrate: 3_000_000,
-        //     level: "3.1".to_string(),
-        //     width: 1280,
-        //     height: 720,
-        // });
-        // video_streams.push(video::VideoStream {
-        //     name: "h264_4".to_string(),
-        //     codec: VideoCodec::H264,
-        //     bitrate: 1_500_000,
-        //     level: "3.1".to_string(),
-        //     width: 1280,
-        //     height: 720,
-        // });
-        // video_streams.push(video::VideoStream {
-        //     name: "h264_5".to_string(),
-        //     codec: VideoCodec::H264,
-        //     bitrate: 1_500_000,
-        //     level: "3.1".to_string(),
-        //     width: 960,
-        //     height: 540,
-        // });
-        // video_streams.push(video::VideoStream {
-        //     name: "h264_6".to_string(),
-        //     codec: VideoCodec::H264,
-        //     bitrate: 750_000,
-        //     level: "3.1".to_string(),
-        //     width: 960,
-        //     height: 540,
-        // });
-        // video_streams.push(video::VideoStream {
-        //     name: "h264_7".to_string(),
-        //     codec: VideoCodec::H264,
-        //     bitrate: 450_000,
-        //     level: "3.0".to_string(),
-        //     width: 640,
-        //     height: 360,
-        // });
-        // video_streams.push(video::VideoStream {
-        //     name: "h264_8".to_string(),
-        //     codec: VideoCodec::H264,
-        //     bitrate: 300_000,
-        //     level: "3.0".to_string(),
-        //     width: 640,
-        //     height: 360,
-        // });
-        // video_streams.push(video::VideoStream {
-        //     name: "h264_9".to_string(),
-        //     codec: VideoCodec::H264,
-        //     bitrate: 200_000,
-        //     level: "3.0".to_string(),
-        //     width: 640,
-        //     height: 360,
-        // });
+        video_streams.push(video::VideoStream {
+            name: "h264_2".to_string(),
+            codec: VideoCodec::H264,
+            bitrate: 3_000_000,
+            level: "4.0".to_string(),
+            width: 1920,
+            height: 1080,
+        });
+        video_streams.push(video::VideoStream {
+            name: "h264_3".to_string(),
+            codec: VideoCodec::H264,
+            bitrate: 3_000_000,
+            level: "3.1".to_string(),
+            width: 1280,
+            height: 720,
+        });
+        video_streams.push(video::VideoStream {
+            name: "h264_4".to_string(),
+            codec: VideoCodec::H264,
+            bitrate: 1_500_000,
+            level: "3.1".to_string(),
+            width: 1280,
+            height: 720,
+        });
+        video_streams.push(video::VideoStream {
+            name: "h264_5".to_string(),
+            codec: VideoCodec::H264,
+            bitrate: 1_500_000,
+            level: "3.1".to_string(),
+            width: 960,
+            height: 540,
+        });
+        video_streams.push(video::VideoStream {
+            name: "h264_6".to_string(),
+            codec: VideoCodec::H264,
+            bitrate: 750_000,
+            level: "3.1".to_string(),
+            width: 960,
+            height: 540,
+        });
+        video_streams.push(video::VideoStream {
+            name: "h264_7".to_string(),
+            codec: VideoCodec::H264,
+            bitrate: 450_000,
+            level: "3.0".to_string(),
+            width: 640,
+            height: 360,
+        });
+        video_streams.push(video::VideoStream {
+            name: "h264_8".to_string(),
+            codec: VideoCodec::H264,
+            bitrate: 300_000,
+            level: "3.0".to_string(),
+            width: 640,
+            height: 360,
+        });
+        video_streams.push(video::VideoStream {
+            name: "h264_9".to_string(),
+            codec: VideoCodec::H264,
+            bitrate: 200_000,
+            level: "3.0".to_string(),
+            width: 640,
+            height: 360,
+        });
     }
 
     let manifest_path = {
