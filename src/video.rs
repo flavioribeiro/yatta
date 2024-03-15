@@ -127,7 +127,7 @@ impl VideoStream {
             appsink.upcast_ref(),
         ])?;
 
-        utils::probe_encoder(state, enc, self.name.clone());
+        utils::probe_encoder(state, parser, self.name.clone());
 
         hlscmaf::setup(&appsink, &self.name, path);
 
