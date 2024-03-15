@@ -1,8 +1,5 @@
 use std::fmt::Display;
-use std::{
-    path::Path,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 use anyhow::Error;
 use gst::prelude::*;
@@ -53,7 +50,7 @@ impl VideoStream {
         state: Arc<Mutex<State>>,
         pipeline: &gst::Pipeline,
         src_pad: &gst::Pad,
-        path: &Path,
+        path: &[String],
     ) -> Result<(), Error> {
         let queue = gst::ElementFactory::make("queue")
             .name(format!("{}-queue", self.name))
@@ -236,6 +233,10 @@ impl VideoStream {
                 Ok((enc, parser, capsfilter))
             }
         }
+    }
+
+    pub fn manifest_path(&self) -> String {
+        format!("{}.m3u8", self.name)
     }
 }
 

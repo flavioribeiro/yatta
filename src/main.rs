@@ -63,7 +63,7 @@ impl State {
                 .map(|stream| {
                     let mut path = PathBuf::new();
                     path.push(&stream.name);
-                    path.push("manifest.m3u8");
+                    path.push(stream.manifest_path());
 
                     VariantStream {
                         uri: path.as_path().display().to_string(),
@@ -84,7 +84,7 @@ impl State {
                 .map(|stream| {
                     let mut path = PathBuf::new();
                     path.push(&stream.name);
-                    path.push("manifest.m3u8");
+                    path.push(stream.manifest_path());
 
                     AlternativeMedia {
                         media_type: AlternativeMediaType::Audio,
@@ -113,7 +113,7 @@ impl State {
 }
 
 fn hw_encoders_init() {
-    match process::Command::new("sudo").arg("init_rsrc").output() {
+    match process::Command::new("init_rsrc").output() {
         Ok(output) => {
             if output.status.success() {
                 info!("init_rsrc executed successfully");
@@ -135,14 +135,12 @@ fn main() -> Result<(), Error> {
     gst::init()?;
     env_logger::init();
 
-    let path = PathBuf::from("hls_live_stream");
+    let path = vec!["hls_live_stream".to_string()];
     let pipeline = gst::Pipeline::default();
-    std::fs::create_dir_all(&path).expect("failed to create directory");
+
+    std::fs::create_dir_all(path.join("/").to_string()).expect("failed to create directory");
 
     let args = CliArguments::parse();
-
-    let mut manifest_path = path.clone();
-    manifest_path.push("manifest.m3u8");
 
     let mut video_streams = Vec::new();
     if !args.disable_av1 {
@@ -246,71 +244,77 @@ fn main() -> Result<(), Error> {
             width: 1920,
             height: 1080,
         });
-        video_streams.push(video::VideoStream {
-            name: "h264_2".to_string(),
-            codec: VideoCodec::H264,
-            bitrate: 3_000_000,
-            level: "4.0".to_string(),
-            width: 1920,
-            height: 1080,
-        });
-        video_streams.push(video::VideoStream {
-            name: "h264_3".to_string(),
-            codec: VideoCodec::H264,
-            bitrate: 3_000_000,
-            level: "3.1".to_string(),
-            width: 1280,
-            height: 720,
-        });
-        video_streams.push(video::VideoStream {
-            name: "h264_4".to_string(),
-            codec: VideoCodec::H264,
-            bitrate: 1_500_000,
-            level: "3.1".to_string(),
-            width: 1280,
-            height: 720,
-        });
-        video_streams.push(video::VideoStream {
-            name: "h264_5".to_string(),
-            codec: VideoCodec::H264,
-            bitrate: 1_500_000,
-            level: "3.1".to_string(),
-            width: 960,
-            height: 540,
-        });
-        video_streams.push(video::VideoStream {
-            name: "h264_6".to_string(),
-            codec: VideoCodec::H264,
-            bitrate: 750_000,
-            level: "3.1".to_string(),
-            width: 960,
-            height: 540,
-        });
-        video_streams.push(video::VideoStream {
-            name: "h264_7".to_string(),
-            codec: VideoCodec::H264,
-            bitrate: 450_000,
-            level: "3.0".to_string(),
-            width: 640,
-            height: 360,
-        });
-        video_streams.push(video::VideoStream {
-            name: "h264_8".to_string(),
-            codec: VideoCodec::H264,
-            bitrate: 300_000,
-            level: "3.0".to_string(),
-            width: 640,
-            height: 360,
-        });
-        video_streams.push(video::VideoStream {
-            name: "h264_9".to_string(),
-            codec: VideoCodec::H264,
-            bitrate: 200_000,
-            level: "3.0".to_string(),
-            width: 640,
-            height: 360,
-        });
+        // video_streams.push(video::VideoStream {
+        //     name: "h264_2".to_string(),
+        //     codec: VideoCodec::H264,
+        //     bitrate: 3_000_000,
+        //     level: "4.0".to_string(),
+        //     width: 1920,
+        //     height: 1080,
+        // });
+        // video_streams.push(video::VideoStream {
+        //     name: "h264_3".to_string(),
+        //     codec: VideoCodec::H264,
+        //     bitrate: 3_000_000,
+        //     level: "3.1".to_string(),
+        //     width: 1280,
+        //     height: 720,
+        // });
+        // video_streams.push(video::VideoStream {
+        //     name: "h264_4".to_string(),
+        //     codec: VideoCodec::H264,
+        //     bitrate: 1_500_000,
+        //     level: "3.1".to_string(),
+        //     width: 1280,
+        //     height: 720,
+        // });
+        // video_streams.push(video::VideoStream {
+        //     name: "h264_5".to_string(),
+        //     codec: VideoCodec::H264,
+        //     bitrate: 1_500_000,
+        //     level: "3.1".to_string(),
+        //     width: 960,
+        //     height: 540,
+        // });
+        // video_streams.push(video::VideoStream {
+        //     name: "h264_6".to_string(),
+        //     codec: VideoCodec::H264,
+        //     bitrate: 750_000,
+        //     level: "3.1".to_string(),
+        //     width: 960,
+        //     height: 540,
+        // });
+        // video_streams.push(video::VideoStream {
+        //     name: "h264_7".to_string(),
+        //     codec: VideoCodec::H264,
+        //     bitrate: 450_000,
+        //     level: "3.0".to_string(),
+        //     width: 640,
+        //     height: 360,
+        // });
+        // video_streams.push(video::VideoStream {
+        //     name: "h264_8".to_string(),
+        //     codec: VideoCodec::H264,
+        //     bitrate: 300_000,
+        //     level: "3.0".to_string(),
+        //     width: 640,
+        //     height: 360,
+        // });
+        // video_streams.push(video::VideoStream {
+        //     name: "h264_9".to_string(),
+        //     codec: VideoCodec::H264,
+        //     bitrate: 200_000,
+        //     level: "3.0".to_string(),
+        //     width: 640,
+        //     height: 360,
+        // });
     }
+
+    let manifest_path = {
+        let mut manifest_path = PathBuf::from(path.join("/").to_string());
+        manifest_path.push("manifest.m3u8".to_string());
+        manifest_path
+    };
 
     let state = Arc::new(Mutex::new(State {
         video_streams,
@@ -320,11 +324,10 @@ fn main() -> Result<(), Error> {
             default: true,
         }],
         all_mimes: HashMap::new(),
-        path: manifest_path.clone(),
+        path: manifest_path,
         wrote_manifest: false,
     }));
 
-    // get the uri from the CLI arguments
     {
         let state_lock = state.lock().unwrap();
 
@@ -341,9 +344,13 @@ fn main() -> Result<(), Error> {
         let video_scale = gst::ElementFactory::make("videoscale").build().unwrap();
         let video_rate = gst::ElementFactory::make("videorate").build().unwrap();
         let timecode = gst::ElementFactory::make("timecodestamper")
+            .property_from_str("set", "keep")
             .build()
             .unwrap();
-        let timeoverlay = gst::ElementFactory::make("timeoverlay").build().unwrap();
+        let timeoverlay = gst::ElementFactory::make("timeoverlay")
+            .property_from_str("time-mode", "time-code")
+            .build()
+            .unwrap();
         let video_tee = gst::ElementFactory::make("tee")
             .name("video_tee")
             .build()

@@ -1,11 +1,13 @@
 use std::{
     collections::VecDeque,
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::{Arc, Mutex},
 };
 
 use anyhow::Error;
 use chrono::{DateTime, Duration, TimeDelta, Utc};
+#[allow(unused_imports)]
+use gst::glib::bitflags::Flags;
 use gst::prelude::*;
 use log::info;
 use m3u8_rs::{MediaPlaylist, MediaSegment};
@@ -15,7 +17,8 @@ where
     P: Publisher,
 {
     publisher: P,
-    path: PathBuf,
+    stream_name: String, // Used as manifest name
+    path: Vec<String>,
     segments: VecDeque<Segment>,
     trimmed_segments: VecDeque<UnreffedSegment>,
     start_date_time: Option<DateTime<Utc>>,
@@ -35,12 +38,13 @@ struct UnreffedSegment {
     path: String,
 }
 
-pub(crate) fn setup(appsink: &gst_app::AppSink, name: &str, path: &Path) {
-    let mut path: PathBuf = path.into();
-    path.push(name);
+pub(crate) fn setup(appsink: &gst_app::AppSink, name: &str, path: &[String]) {
+    let mut path = path.to_vec();
+    path.push(name.to_string());
 
     let state = Arc::new(Mutex::new(StreamState {
-        publisher: FilePublisher::new(&path.clone()),
+        publisher: FilePublisher::new(&path),
+        stream_name: name.to_string(),
         segments: VecDeque::new(),
         trimmed_segments: VecDeque::new(),
         path: path.clone(),
@@ -137,7 +141,8 @@ pub(crate) fn setup(appsink: &gst_app::AppSink, name: &str, path: &Path) {
                         .write_all(&map)
                         .expect("failed to write fragment");
                 }
-                let basename = format!("segment_{}.fmp4", state.segment_index);
+                // format with 5 digits of precision like 00000
+                let basename = format!("{:05}.mp4", state.segment_index);
                 state.segment_index += 1;
                 state
                     .publisher
@@ -154,8 +159,6 @@ pub(crate) fn setup(appsink: &gst_app::AppSink, name: &str, path: &Path) {
                             .nseconds() as i64,
                     ))
                     .unwrap();
-
-                //info!("wrote segment: {}", path.display());
 
                 state.segments.push_back(Segment {
                     duration,
@@ -223,7 +226,7 @@ where
         .expect("Failed to write media playlist");
     state
         .publisher
-        .publish_manifest("manifest.m3u8", &manifest_contents)
+        .publish_manifest(&format!("{}.m3u8", state.stream_name), &manifest_contents)
         .unwrap();
 }
 
@@ -254,8 +257,11 @@ where
         if segment.removal_time < state.segments.front().unwrap().date_time {
             let segment = state.trimmed_segments.pop_front().unwrap();
 
-            let mut path = state.path.clone();
-            path.push(segment.path);
+            let path = {
+                let mut path = state.path.clone();
+                path.push(segment.path);
+                PathBuf::from(path.join("/"))
+            };
             info!("deleting {}", path.display());
             std::fs::remove_file(path).expect("Failed to remove old segment");
         } else {
@@ -275,11 +281,10 @@ pub struct FilePublisher {
 }
 
 impl FilePublisher {
-    pub fn new(base_path: &Path) -> Self {
+    pub fn new(base_path: &[String]) -> Self {
+        let base_path = PathBuf::from(base_path.join("/"));
         std::fs::create_dir_all(&base_path).expect("failed to create directory");
-        Self {
-            base_path: base_path.into(),
-        }
+        Self { base_path }
     }
 }
 
