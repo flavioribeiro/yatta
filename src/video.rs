@@ -210,10 +210,10 @@ impl VideoStream {
                     enc.set_property("bitrate", self.bitrate as i32);
                 }
                 if enc_factory.name() == "av1enc" {
-                    enc.set_property("cpu-used", 10i32);
+                    // enc.set_property("cpu-used", 10i32);
                     // enc.set_property_from_str("end-usage", "cbr");
                     enc.set_property_from_str("usage-profile", "realtime");
-                    enc.set_property("threads", 10u32);
+                    enc.set_property("threads", 50u32);
                     // enc.set_property("target-bitrate", self.bitrate as u32);
                 }
                 if enc.has_property("xcoder-params", None) {
