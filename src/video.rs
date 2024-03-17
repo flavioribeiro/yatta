@@ -51,6 +51,7 @@ impl VideoStream {
         pipeline: &gst::Pipeline,
         src_pad: &gst::Pad,
         path: &[String],
+        forced_encoder_factory_name: Option<String>,
     ) -> Result<(), Error> {
         let queue = gst::ElementFactory::make("queue")
             .name(format!("{}-queue", self.name))
@@ -78,7 +79,9 @@ impl VideoStream {
             .property("text", &self.name)
             .property("font-desc", "Sans 24")
             .build()?;
-        let Ok((enc, parser, capsfilter)) = Self::setup_codec(self) else {
+        let Ok((enc, parser, capsfilter)) =
+            Self::setup_codec(self, forced_encoder_factory_name.as_deref())
+        else {
             return Err(anyhow::anyhow!("Failed to setup codec: {}", self.name));
         };
 
@@ -88,7 +91,10 @@ impl VideoStream {
             } else {
                 gst::ElementFactory::make("cmafmux").name(format!("{}-cmafmux", self.name))
             }
-            .property("fragment-duration", 2000.mseconds())
+            .property(
+                "fragment-duration",
+                gst::ClockTime::from_seconds(2).mseconds(),
+            )
             .property_from_str("header-update-mode", "update")
             .property("write-mehd", true)
             .build()?
@@ -134,12 +140,19 @@ impl VideoStream {
         Ok(())
     }
 
-    fn setup_codec(&self) -> Result<(gst::Element, gst::Element, gst::Element), Error> {
+    fn setup_codec(
+        &self,
+        forced_encoder_factory_name: Option<&str>,
+    ) -> Result<(gst::Element, gst::Element, gst::Element), Error> {
         let parser: gst::Element;
         let capsfilter: gst::Element;
 
-        let enc_factory = encoder_for_codec(self.codec)
-            .expect(&format!("No encoder found for codec: {}", self.codec));
+        let enc_factory = match forced_encoder_factory_name {
+            Some(enc) => gst::ElementFactory::find(enc)
+                .expect(&format!("No encoder with this name was found: {}", enc)),
+            None => encoder_for_codec(self.codec)
+                .expect(&format!("No encoder found for codec: {}", self.codec)),
+        };
         let enc = enc_factory.create().build()?;
 
         match self.codec {
@@ -205,7 +218,7 @@ impl VideoStream {
                     enc.set_property("error-resilient", true);
                     enc.set_property(
                         "max-key-frame-interval",
-                        gst::ClockTime::from_seconds(1).mseconds(),
+                        gst::ClockTime::from_seconds(2).mseconds(),
                     );
                     enc.set_property("bitrate", self.bitrate as i32);
                 }

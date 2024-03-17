@@ -1,19 +1,24 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::process::Stdio;
 use std::sync::Arc;
+use std::task::{Context, Poll};
 
+use axum::body::{Body, Bytes};
 use axum::extract::Extension;
-use axum::http::{header, StatusCode};
+use axum::http::header::CONTENT_TYPE;
+use axum::http::{header, HeaderValue, Request, Response, StatusCode};
 use axum::response::IntoResponse;
-use axum::{response, response::Html, routing::get, Router};
+use axum::{http, response, response::Html, routing::get, Router};
 use gst::glib;
 use gst::prelude::*;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 use tokio::sync::RwLock;
-use tower::ServiceBuilder;
+use tower::{Service, ServiceBuilder};
+use tower_http::body::Full;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
+use tower_http::set_header::SetResponseHeaderLayer;
 
 type SharedState = Arc<RwLock<State>>;
 
@@ -27,6 +32,22 @@ impl State {
     }
 }
 
+fn content_header_from_extension(response: &Response<Body>) -> Option<HeaderValue> {
+    // modify content type header
+    let Ok(current_header) = response
+        .headers()
+        .get(CONTENT_TYPE)?
+        .to_str()
+        .map(String::from)
+    else {
+        return None;
+    };
+    match current_header.as_str() {
+        "audio/x-mpegurl" => Some(HeaderValue::from_static("application/x-mpegURL")),
+        _ => Some(HeaderValue::from_str(current_header.as_str()).unwrap()),
+    }
+}
+
 pub async fn run(port: u16, pipeline_weak: glib::WeakRef<gst::Pipeline>) {
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), port);
     // add CORS headers to files
@@ -37,6 +58,10 @@ pub async fn run(port: u16, pipeline_weak: glib::WeakRef<gst::Pipeline>) {
         .route("/pipeline-diagram", get(pipeline_diagram))
         .route("/pipeline-diagram.png", get(pipeline_diagram_image))
         .nest_service("/live", hls_dir.clone())
+        .layer(SetResponseHeaderLayer::overriding(
+            CONTENT_TYPE,
+            content_header_from_extension,
+        ))
         .layer(cors)
         .layer(
             ServiceBuilder::new()

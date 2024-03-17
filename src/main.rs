@@ -26,6 +26,10 @@ struct CliArguments {
     #[clap(required = true)]
     uri: String,
 
+    /// Force the GStreamer AV1 encoder element to be used
+    #[clap(long, short)]
+    force_av1_encoder: Option<String>,
+
     #[clap(long)]
     disable_av1: bool,
 
@@ -430,11 +434,18 @@ fn main() -> Result<(), Error> {
         });
 
         for stream in &state_lock.video_streams {
+            let force_encoder_factory_name =
+                if stream.codec == VideoCodec::AV1 && args.force_av1_encoder.is_some() {
+                    args.force_av1_encoder.clone()
+                } else {
+                    None
+                };
             stream.setup(
                 state.clone(),
                 &pipeline,
                 &video_tee.request_pad_simple("src_%u").unwrap(),
                 &path,
+                force_encoder_factory_name,
             )?;
         }
 
