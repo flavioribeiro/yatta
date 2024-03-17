@@ -186,7 +186,10 @@ where
 
     let playlist = MediaPlaylist {
         version: Some(7),
-        target_duration: 2.0,
+        target_duration: state
+            .segments
+            .back()
+            .map_or(0f32, |v| v.duration.seconds_f32().ceil()),
         media_sequence: state.media_sequence,
         segments: state
             .segments

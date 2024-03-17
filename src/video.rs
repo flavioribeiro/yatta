@@ -166,6 +166,7 @@ impl VideoStream {
                 if enc_factory.name() == "x264enc" {
                     enc.set_property("bframes", 0u32);
                     enc.set_property_from_str("tune", "zerolatency");
+                    enc.set_property("key-int-max", gst::ClockTime::from_seconds(2).nseconds());
                 }
                 if enc.has_property("xcoder-params", None) {
                     enc.set_property(
