@@ -185,7 +185,7 @@ impl VideoStream {
                     enc.set_property(
                         "xcoder-params",
                         format!(
-                            "RcEnable=1:gopPresetIdx=9:bitrate={},intraPeriod={}",
+                            "RcEnable=1:gopPresetIdx=9:bitrate={}:intraPeriod={}",
                             self.bitrate, frames_per_fragment
                         ),
                     );
@@ -214,7 +214,7 @@ impl VideoStream {
                     enc.set_property(
                         "xcoder-params",
                         format!(
-                            "RcEnable=1:gopPresetIdx=9:bitrate={},intraPeriod={}",
+                            "RcEnable=1:gopPresetIdx=9:bitrate={}:intraPeriod={}",
                             self.bitrate, frames_per_fragment
                         ),
                     );
@@ -252,7 +252,7 @@ impl VideoStream {
                     enc.set_property(
                         "xcoder-params",
                         format!(
-                            "profile=1:high-tier=0:lowDelay=1:lookaheadDepth=0:multicoreJointMode=0:gopPresetIdx=9:av1ErrorResilientMode=1:RcEnable=1:bitrate={},intraPeriod={}",
+                            "profile=1:high-tier=0:lowDelay=1:lookaheadDepth=0:multicoreJointMode=0:gopPresetIdx=9:av1ErrorResilientMode=1:RcEnable=1:bitrate={}:intraPeriod={}",
                             self.bitrate,
                             frames_per_fragment
                         ),
