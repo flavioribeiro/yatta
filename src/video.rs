@@ -91,16 +91,18 @@ impl VideoStream {
         };
 
         let mux = {
-            if self.codec == VideoCodec::AV1 {
-                gst::ElementFactory::make("isofmp4mux").name(format!("{}-isofmp4mux", self.name))
-            } else {
-                gst::ElementFactory::make("cmafmux").name(format!("{}-cmafmux", self.name))
-            }
-            .property("fragment-duration", fragment_duration_nanos)
-            .property("latency", gst::ClockTime::from_seconds(1).nseconds())
-            .property_from_str("header-update-mode", "update")
-            .property("write-mehd", true)
-            .build()?
+            // if self.codec == VideoCodec::AV1 {
+            //     gst::ElementFactory::make("isofmp4mux").name(format!("{}-isofmp4mux", self.name))
+            // } else {
+            //     gst::ElementFactory::make("cmafmux").name(format!("{}-cmafmux", self.name))
+            // }
+            gst::ElementFactory::make("cmafmux")
+                .name(format!("{}-cmafmux", self.name))
+                .property("fragment-duration", fragment_duration_nanos)
+                .property("latency", gst::ClockTime::from_seconds(1).nseconds())
+                .property_from_str("header-update-mode", "update")
+                .property("write-mehd", true)
+                .build()?
         };
         let appsink = gst_app::AppSink::builder()
             .name(format!("{}-appsink", self.name))
