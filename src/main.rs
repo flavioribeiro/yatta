@@ -335,8 +335,6 @@ fn main() -> Result<(), Error> {
     }));
 
     {
-        let state_lock = state.lock().unwrap();
-
         let uridecodebin = gst::ElementFactory::make("uridecodebin")
             .name("contentsrc")
             .property("uri", &args.uri)
@@ -435,6 +433,7 @@ fn main() -> Result<(), Error> {
             }
         });
 
+        let state_lock = state.lock().unwrap();
         for stream in &state_lock.video_streams {
             let force_encoder_factory_name =
                 if stream.codec == VideoCodec::AV1 && args.force_av1_encoder.is_some() {
@@ -448,6 +447,7 @@ fn main() -> Result<(), Error> {
                 &video_tee.request_pad_simple("src_%u").unwrap(),
                 &path,
                 force_encoder_factory_name,
+                state_lock.fragment_duration_nanos,
             )?;
         }
 
@@ -457,6 +457,7 @@ fn main() -> Result<(), Error> {
                 &pipeline,
                 &audio_tee.request_pad_simple("src_%u").unwrap(),
                 &path,
+                state_lock.fragment_duration_nanos,
             )?;
         }
     }

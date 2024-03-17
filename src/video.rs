@@ -52,11 +52,8 @@ impl VideoStream {
         src_pad: &gst::Pad,
         path: &[String],
         forced_encoder_factory_name: Option<String>,
+        fragment_duration_nanos: u64,
     ) -> Result<(), Error> {
-        let fragment_duration_nanos = {
-            let mut state = state.lock().unwrap();
-            state.fragment_duration_nanos
-        };
         let frame_rate = gst::Fraction::new(30, 1);
 
         let queue = gst::ElementFactory::make("queue")

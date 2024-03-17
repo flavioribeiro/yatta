@@ -18,15 +18,11 @@ impl AudioStream {
         pipeline: &gst::Pipeline,
         src_pad: &gst::Pad,
         path: &[String],
+        fragment_duration_nanos: u64,
     ) -> Result<(), Error> {
         let queue = gst::ElementFactory::make("queue")
             .name(format!("{}-queue", self.name))
             .build()?;
-
-        let fragment_duration_nanos = {
-            let mut state = state.lock().unwrap();
-            state.fragment_duration_nanos
-        };
 
         let enc = gst::ElementFactory::make("avenc_aac").build()?;
         let mux = gst::ElementFactory::make("cmafmux")
