@@ -93,7 +93,7 @@ impl VideoStream {
             }
             .property(
                 "fragment-duration",
-                gst::ClockTime::from_seconds(2).mseconds(),
+                gst::ClockTime::from_seconds(2).nseconds(),
             )
             .property_from_str("header-update-mode", "update")
             .property("write-mehd", true)

@@ -194,8 +194,7 @@ where
             .enumerate()
             .map(|(idx, segment)| MediaSegment {
                 uri: segment.path.to_string(),
-                duration: (segment.duration.nseconds() as f64
-                    / gst::ClockTime::SECOND.nseconds() as f64) as f32,
+                duration: segment.duration.seconds_f32(),
                 map: if idx == 0 {
                     Some(m3u8_rs::Map {
                         uri: "init.mp4".into(),

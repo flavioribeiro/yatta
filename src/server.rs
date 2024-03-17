@@ -43,7 +43,7 @@ fn content_header_from_extension(response: &Response<Body>) -> Option<HeaderValu
         return None;
     };
     match current_header.as_str() {
-        "audio/x-mpegurl" => Some(HeaderValue::from_static("application/x-mpegURL")),
+        "audio/x-mpegurl" => Some(HeaderValue::from_static("application/vnd.apple.mpegurl")),
         _ => Some(HeaderValue::from_str(current_header.as_str()).unwrap()),
     }
 }

@@ -4,3 +4,4 @@ hls_live_stream
 *.png
 *.dot
 error_graph_*
+*.json
