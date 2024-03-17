@@ -23,15 +23,17 @@ impl AudioStream {
             .name(format!("{}-queue", self.name))
             .build()?;
 
+        let fragment_duration_nanos = {
+            let mut state = state.lock().unwrap();
+            state.fragment_duration_nanos
+        };
+
         let enc = gst::ElementFactory::make("avenc_aac").build()?;
         let mux = gst::ElementFactory::make("cmafmux")
             .name(format!("{}-cmafmux", self.name))
             .property_from_str("header-update-mode", "update")
             .property("write-mehd", true)
-            .property(
-                "fragment-duration",
-                gst::ClockTime::from_seconds(2).nseconds(),
-            )
+            .property("fragment-duration", fragment_duration_nanos)
             .build()?;
         let appsink = gst_app::AppSink::builder().buffer_list(true).build();
 

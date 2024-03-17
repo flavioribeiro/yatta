@@ -46,6 +46,7 @@ struct State {
     all_mimes: HashMap<String, String>,
     path: PathBuf,
     wrote_manifest: bool,
+    fragment_duration_nanos: u64,
 }
 
 impl State {
@@ -330,6 +331,7 @@ fn main() -> Result<(), Error> {
         all_mimes: HashMap::new(),
         path: manifest_path,
         wrote_manifest: false,
+        fragment_duration_nanos: gst::ClockTime::from_seconds(2).nseconds(),
     }));
 
     {
