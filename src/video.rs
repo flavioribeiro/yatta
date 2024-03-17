@@ -181,7 +181,9 @@ impl VideoStream {
                         format!("RcEnable=1:gopPresetIdx=9:bitrate={}", self.bitrate),
                     );
                 }
-                parser = gst::ElementFactory::make("h264parse").build()?;
+                parser = gst::ElementFactory::make("h264parse")
+                    .name(format!("{}-h264parse", self.name))
+                    .build()?;
                 capsfilter = gst::ElementFactory::make("capsfilter")
                     .property(
                         "caps",
@@ -205,7 +207,9 @@ impl VideoStream {
                         format!("RcEnable=1:gopPresetIdx=9:bitrate={}", self.bitrate),
                     );
                 }
-                parser = gst::ElementFactory::make("h265parse").build()?;
+                parser = gst::ElementFactory::make("h265parse")
+                    .name(format!("{}-h265parse", self.name))
+                    .build()?;
                 capsfilter = gst::ElementFactory::make("capsfilter")
                     .property(
                         "caps",

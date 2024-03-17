@@ -58,10 +58,10 @@ pub async fn run(port: u16, pipeline_weak: glib::WeakRef<gst::Pipeline>) {
         .route("/pipeline-diagram", get(pipeline_diagram))
         .route("/pipeline-diagram.png", get(pipeline_diagram_image))
         .nest_service("/live", hls_dir.clone())
-        .layer(SetResponseHeaderLayer::overriding(
-            CONTENT_TYPE,
-            content_header_from_extension,
-        ))
+        // .layer(SetResponseHeaderLayer::overriding(
+        //     CONTENT_TYPE,
+        //     content_header_from_extension,
+        // ))
         .layer(cors)
         .layer(
             ServiceBuilder::new()
