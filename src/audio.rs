@@ -27,7 +27,10 @@ impl AudioStream {
         let mux = gst::ElementFactory::make("cmafmux")
             .property_from_str("header-update-mode", "update")
             .property("write-mehd", true)
-            .property("fragment-duration", 2000.mseconds())
+            .property(
+                "fragment-duration",
+                gst::ClockTime::from_seconds(2).nseconds(),
+            )
             .build()?;
         let appsink = gst_app::AppSink::builder().buffer_list(true).build();
 

@@ -95,6 +95,7 @@ impl VideoStream {
                 "fragment-duration",
                 gst::ClockTime::from_seconds(2).nseconds(),
             )
+            .property("latency", gst::ClockTime::from_seconds(1).nseconds())
             .property_from_str("header-update-mode", "update")
             .property("write-mehd", true)
             .build()?
@@ -168,6 +169,12 @@ impl VideoStream {
                     enc.set_property_from_str("tune", "zerolatency");
                     enc.set_property("key-int-max", gst::ClockTime::from_seconds(2).nseconds());
                 }
+                if enc.has_property("max-keyframe-interval-duration", None) {
+                    enc.set_property(
+                        "max-keyframe-interval-duration",
+                        gst::ClockTime::from_seconds(2).nseconds(),
+                    );
+                }
                 if enc.has_property("xcoder-params", None) {
                     enc.set_property(
                         "xcoder-params",
@@ -191,9 +198,6 @@ impl VideoStream {
                 }
                 if enc.has_property("realtime", None) {
                     enc.set_property("realtime", true);
-                }
-                if enc_factory.name() == "x264enc" {
-                    enc.set_property_from_str("tune", "zerolatency");
                 }
                 if enc.has_property("xcoder-params", None) {
                     enc.set_property(
@@ -219,7 +223,7 @@ impl VideoStream {
                     enc.set_property("error-resilient", true);
                     enc.set_property(
                         "max-key-frame-interval",
-                        gst::ClockTime::from_seconds(2).mseconds(),
+                        gst::ClockTime::from_seconds(2).nseconds(),
                     );
                     enc.set_property("bitrate", self.bitrate as i32);
                 }
