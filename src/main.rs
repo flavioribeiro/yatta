@@ -154,8 +154,8 @@ fn main() -> Result<(), Error> {
             codec: VideoCodec::AV1,
             bitrate: 1_024_000,
             level: "".to_string(),
-            width: 256,
-            height: 144,
+            width: 1920,
+            height: 1080,
         });
     }
     if !args.disable_h265 {
