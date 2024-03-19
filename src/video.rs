@@ -97,7 +97,7 @@ impl VideoStream {
                 gst::ElementFactory::make("cmafmux").name(format!("{}-cmafmux", self.name))
             }
             // gst::ElementFactory::make("cmafmux")
-            .name(format!("{}-cmafmux", self.name))
+            // .name(format!("{}-cmafmux", self.name))
             .property("fragment-duration", fragment_duration_nanos)
             .property("latency", gst::ClockTime::from_seconds(1).nseconds())
             .property_from_str("header-update-mode", "update")
