@@ -54,13 +54,16 @@ impl VideoStream {
         forced_encoder_factory_name: Option<String>,
         fragment_duration_nanos: u64,
     ) -> Result<(), Error> {
-        let frame_rate = gst::Fraction::new(30, 1);
+        let frame_rate = gst::Fraction::new(25, 1);
 
         let queue = gst::ElementFactory::make("queue")
             .name(format!("{}-queue", self.name))
             .build()?;
         let videoscale = gst::ElementFactory::make("videoscale")
             .name(format!("{}-videoscale", self.name))
+            .build()?;
+        let videorate = gst::ElementFactory::make("videorate")
+            .name(format!("{}-videorate", self.name))
             .build()?;
         let raw_capsfilter = gst::ElementFactory::make("capsfilter")
             .name(format!("{}-video-capsfilter", self.name))
@@ -112,6 +115,7 @@ impl VideoStream {
         pipeline.add_many([
             &queue,
             &videoscale,
+            &videorate,
             &raw_capsfilter,
             &codec_burn_in,
             &videoconvert,
@@ -128,6 +132,7 @@ impl VideoStream {
         gst::Element::link_many([
             &queue,
             &videoscale,
+            &videorate,
             &raw_capsfilter,
             &codec_burn_in,
             &videoconvert,
