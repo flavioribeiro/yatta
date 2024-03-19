@@ -62,9 +62,6 @@ impl VideoStream {
         let videoscale = gst::ElementFactory::make("videoscale")
             .name(format!("{}-videoscale", self.name))
             .build()?;
-        let videoconvert = gst::ElementFactory::make("videoconvert")
-            .name(format!("{}-videoconvert", self.name))
-            .build()?;
         let raw_capsfilter = gst::ElementFactory::make("capsfilter")
             .name(format!("{}-video-capsfilter", self.name))
             .property(
@@ -81,6 +78,9 @@ impl VideoStream {
             .name(format!("{}-textoverlay", self.name))
             .property("text", &self.name)
             .property("font-desc", "Sans 24")
+            .build()?;
+        let videoconvert = gst::ElementFactory::make("videoconvert")
+            .name(format!("{}-videoconvert", self.name))
             .build()?;
         let Ok((enc, parser, capsfilter)) = self.setup_codec(
             forced_encoder_factory_name.as_deref(),
@@ -112,9 +112,9 @@ impl VideoStream {
         pipeline.add_many([
             &queue,
             &videoscale,
-            &videoconvert,
             &raw_capsfilter,
             &codec_burn_in,
+            &videoconvert,
             &enc,
             &parser,
             &capsfilter,
@@ -128,9 +128,9 @@ impl VideoStream {
         gst::Element::link_many([
             &queue,
             &videoscale,
-            &videoconvert,
             &raw_capsfilter,
             &codec_burn_in,
+            &videoconvert,
             &enc,
             &parser,
             &capsfilter,
