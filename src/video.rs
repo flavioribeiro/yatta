@@ -250,6 +250,10 @@ impl VideoStream {
                     enc.set_property("keyframe-max-dist", frames_per_fragment as i32);
                     enc.set_property("target-bitrate", self.bitrate as u32);
                 }
+                if enc_factory.name() == "nvav1enc" {
+                    enc.set_property("bitrate", self.bitrate as u32);
+                    enc.set_property("gop-length", frames_per_fragment as u32);
+                }
                 if enc.has_property("xcoder-params", None) {
                     enc.set_property(
                         "xcoder-params",
