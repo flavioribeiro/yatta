@@ -54,7 +54,7 @@ impl VideoStream {
         forced_encoder_factory_name: Option<String>,
         fragment_duration_nanos: u64,
     ) -> Result<(), Error> {
-        let frame_rate = gst::Fraction::new(25, 1);
+        let frame_rate = gst::Fraction::new(30, 1);
 
         let queue = gst::ElementFactory::make("queue")
             .name(format!("{}-queue", self.name))
