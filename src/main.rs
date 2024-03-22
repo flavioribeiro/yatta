@@ -31,6 +31,9 @@ struct CliArguments {
     force_av1_encoder: Option<String>,
 
     #[clap(long)]
+    full_av1_ladder: bool,
+
+    #[clap(long)]
     disable_av1: bool,
 
     #[clap(long)]
@@ -149,13 +152,42 @@ fn main() -> Result<(), Error> {
 
     let mut video_streams = Vec::new();
     if !args.disable_av1 {
+        if args.full_av1_ladder {
+            println!("Using full AV1 ladder");
+            video_streams.push(video::VideoStream {
+                name: "av1_0".to_string(),
+                codec: VideoCodec::AV1,
+                bitrate: 1_024_000,
+                level: "".to_string(),
+                width: 1920,
+                height: 1080,
+            });
+            video_streams.push(video::VideoStream {
+                name: "av1_1".to_string(),
+                codec: VideoCodec::AV1,
+                bitrate: 750_000,
+                level: "".to_string(),
+                width: 1280,
+                height: 720,
+            });
+            video_streams.push(video::VideoStream {
+                name: "av1_2".to_string(),
+                codec: VideoCodec::AV1,
+                bitrate: 450_000,
+                level: "".to_string(),
+                width: 960,
+                height: 540,
+            });
+        } else {
+            println!("Using single rendition AV1 encoding");
+        }
         video_streams.push(video::VideoStream {
-            name: "av1_0".to_string(),
+            name: "av1_3".to_string(),
             codec: VideoCodec::AV1,
-            bitrate: 1_024_000,
+            bitrate: 200_000,
             level: "".to_string(),
-            width: 256,
-            height: 144,
+            width: 640,
+            height: 360,
         });
     }
     if !args.disable_h265 {
