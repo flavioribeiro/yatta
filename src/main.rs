@@ -377,7 +377,7 @@ fn main() -> Result<(), Error> {
             .name("video-head")
             .build()
             .unwrap();
-        let video_scale = gst::ElementFactory::make("videoscale").build().unwrap();
+        // let video_scale = gst::ElementFactory::make("videoscale").build().unwrap();
         let video_rate = gst::ElementFactory::make("videorate").build().unwrap();
         let timecode = gst::ElementFactory::make("timecodestamper")
             .property_from_str("set", "keep")
@@ -407,7 +407,7 @@ fn main() -> Result<(), Error> {
             .add_many([
                 &uridecodebin,
                 &video_head,
-                &video_scale,
+                // &video_scale,
                 &video_rate,
                 &timecode,
                 &timeoverlay,
@@ -419,7 +419,7 @@ fn main() -> Result<(), Error> {
             .unwrap();
         gst::Element::link_many(&[
             &video_head,
-            &video_scale,
+            // &video_scale,
             &video_rate,
             &timecode,
             &timeoverlay,
