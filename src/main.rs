@@ -157,7 +157,7 @@ fn main() -> Result<(), Error> {
             video_streams.push(video::VideoStream {
                 name: "av1_0".to_string(),
                 codec: VideoCodec::AV1,
-                bitrate: 1_024_000,
+                bitrate: 3_000_000,
                 level: "".to_string(),
                 width: 1920,
                 height: 1080,
@@ -165,7 +165,7 @@ fn main() -> Result<(), Error> {
             video_streams.push(video::VideoStream {
                 name: "av1_1".to_string(),
                 codec: VideoCodec::AV1,
-                bitrate: 750_000,
+                bitrate: 2_000_000,
                 level: "".to_string(),
                 width: 1280,
                 height: 720,
