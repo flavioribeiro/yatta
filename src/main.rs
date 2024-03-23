@@ -183,10 +183,8 @@ fn main() -> Result<(), Error> {
                 codec: VideoCodec::AV1,
                 bitrate: 200_000,
                 level: "".to_string(),
-                // width: 640,
-                width: 256,
-                // height: 360,
-                height: 144,
+                width: 640,
+                height: 360,
             });
         } else {
             println!("Using single rendition AV1 encoding");
@@ -196,8 +194,10 @@ fn main() -> Result<(), Error> {
             codec: VideoCodec::AV1,
             bitrate: 150_000,
             level: "".to_string(),
-            width: 640,
-            height: 360,
+            width: 256,
+            // width: 640,
+            // height: 360,
+            height: 144,
         });
     }
     if !args.disable_h265 {
