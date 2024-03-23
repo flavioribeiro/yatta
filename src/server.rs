@@ -44,6 +44,7 @@ fn content_header_from_extension(response: &Response<Body>) -> Option<HeaderValu
     };
     match current_header_value.as_str() {
         "audio/x-mpegurl" => Some(HeaderValue::from_static("application/vnd.apple.mpegurl")),
+        "application/octet-stream" => Some(HeaderValue::from_static("image/png")),
         val @ _ => Some(HeaderValue::from_str(val).unwrap()),
     }
 }
@@ -70,7 +71,6 @@ pub async fn run(port: u16, pipeline_weak: glib::WeakRef<gst::Pipeline>) {
                 )))))
                 .into_inner(),
         );
-    //let server = Server::bind(&addr).serve(router.into_make_service());
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     let server = axum::serve(listener, router.into_make_service());
     if let Err(e) = server.await {

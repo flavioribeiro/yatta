@@ -24,7 +24,9 @@ impl AudioStream {
             .name(format!("{}-queue", self.name))
             .build()?;
 
-        let enc = gst::ElementFactory::make("avenc_aac").build()?;
+        let enc = gst::ElementFactory::make("avenc_aac")
+            .property("maxrate", 128_000i64)
+            .build()?;
         let mux = gst::ElementFactory::make("cmafmux")
             .name(format!("{}-cmafmux", self.name))
             .property_from_str("header-update-mode", "update")

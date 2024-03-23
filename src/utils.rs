@@ -25,7 +25,9 @@ pub(crate) fn probe_encoder(state: Arc<Mutex<State>>, enc: gst::Element, name: S
                                     .and_then(|c| c.parse::<gst_video::VideoColorimetry>().ok()),
                             )
                             .into();
+                            log::debug!("Computed mime for {}: {}", name, mime);
                         } else {
+                            log::debug!("No codec_data found for AV1 encoder, using default mime");
                             // Fallback to a default mime
                             mime = "av01.0.00M.08".into();
                         }

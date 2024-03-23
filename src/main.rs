@@ -75,7 +75,7 @@ impl State {
 
                     VariantStream {
                         uri: path.as_path().display().to_string(),
-                        bandwidth: stream.bitrate,
+                        bandwidth: stream.bitrate + 150_000,
                         codecs: self.all_mimes.get(&stream.name).map(|s| s.to_string()),
                         resolution: Some(m3u8_rs::Resolution {
                             width: stream.width,
@@ -178,16 +178,24 @@ fn main() -> Result<(), Error> {
                 width: 960,
                 height: 540,
             });
+            video_streams.push(video::VideoStream {
+                name: "av1_3".to_string(),
+                codec: VideoCodec::AV1,
+                bitrate: 200_000,
+                level: "".to_string(),
+                width: 640,
+                height: 360,
+            });
         } else {
             println!("Using single rendition AV1 encoding");
         }
         video_streams.push(video::VideoStream {
-            name: "av1_3".to_string(),
+            name: "av1_4".to_string(),
             codec: VideoCodec::AV1,
-            bitrate: 200_000,
+            bitrate: 150_000,
             level: "".to_string(),
-            width: 640,
-            height: 360,
+            width: 256,
+            height: 144,
         });
     }
     if !args.disable_h265 {
