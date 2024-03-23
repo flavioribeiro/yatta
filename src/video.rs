@@ -263,7 +263,7 @@ impl VideoStream {
                     enc.set_property(
                         "xcoder-params",
                         format!(
-                            "profile=1:high-tier=0:lowDelay=1:lookaheadDepth=0:multicoreJointMode=0:gopPresetIdx=9:av1ErrorResilientMode=1:RcEnable=1:bitrate={}:intraPeriod={}",
+                            "roiEnable=1:profile=1:high-tier=0:lowDelay=1:lookaheadDepth=0:multicoreJointMode=0:gopPresetIdx=9:av1ErrorResilientMode=1:RcEnable=1:bitrate={}:intraPeriod={}",
                             self.bitrate,
                             frames_per_fragment
                         ),

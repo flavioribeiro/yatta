@@ -34,7 +34,7 @@ impl State {
 
 fn content_header_from_extension(response: &Response<Body>) -> Option<HeaderValue> {
     // modify content type header
-    let Ok(current_header) = response
+    let Ok(current_header_value) = response
         .headers()
         .get(CONTENT_TYPE)?
         .to_str()
@@ -42,9 +42,9 @@ fn content_header_from_extension(response: &Response<Body>) -> Option<HeaderValu
     else {
         return None;
     };
-    match current_header.as_str() {
+    match current_header_value.as_str() {
         "audio/x-mpegurl" => Some(HeaderValue::from_static("application/vnd.apple.mpegurl")),
-        _ => Some(HeaderValue::from_str(current_header.as_str()).unwrap()),
+        val @ _ => Some(HeaderValue::from_str(val).unwrap()),
     }
 }
 
@@ -58,10 +58,10 @@ pub async fn run(port: u16, pipeline_weak: glib::WeakRef<gst::Pipeline>) {
         .route("/pipeline-diagram", get(pipeline_diagram))
         .route("/pipeline-diagram.png", get(pipeline_diagram_image))
         .nest_service("/live", hls_dir.clone())
-        // .layer(SetResponseHeaderLayer::overriding(
-        //     CONTENT_TYPE,
-        //     content_header_from_extension,
-        // ))
+        .layer(SetResponseHeaderLayer::overriding(
+            CONTENT_TYPE,
+            content_header_from_extension,
+        ))
         .layer(cors)
         .layer(
             ServiceBuilder::new()
