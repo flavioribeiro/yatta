@@ -90,6 +90,10 @@ fn compute_av1_mime(codec_data: &[u8], colorimetry: Option<gst_video::VideoColor
     assert!(codec_data.len() >= 3);
     let seq_profile = (codec_data[1] >> 5) & 0b0111;
     let seq_level_idx_0 = codec_data[1] & 0b0001_1111;
+    println!(
+        "seq_level_idx_0: {:08b} = {}",
+        codec_data[1], seq_level_idx_0
+    );
     let tier = {
         let seq_tier_0 = codec_data[2] >> 7;
         if seq_tier_0 == 0 {
@@ -100,16 +104,11 @@ fn compute_av1_mime(codec_data: &[u8], colorimetry: Option<gst_video::VideoColor
     };
     let high_bitdepth = (codec_data[2] >> 6) & 0x01;
     let twelve_bit = (codec_data[2] >> 5) & 0x01;
-    let bit_depth: u8 = if seq_profile == 2 && high_bitdepth == 1 {
-        if twelve_bit == 1 {
-            12
-        } else {
-            10
-        }
-    } else if high_bitdepth == 1 {
-        10
-    } else {
-        8
+    let bit_depth: u8 = match (seq_profile, high_bitdepth, twelve_bit) {
+        (2, 1, 1) => 12,
+        (2, 1, _) => 10,
+        (_, 1, _) => 10,
+        _ => 8,
     };
     let monochrome = (codec_data[2] >> 4) & 0x01;
     let chroma_subsampling_x = (codec_data[2] >> 3) & 0x01;

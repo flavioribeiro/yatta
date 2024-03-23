@@ -245,6 +245,7 @@ impl VideoStream {
                     enc.set_property("low-latency", true);
                     enc.set_property("error-resilient", true);
                     enc.set_property("threads", 10u32);
+                    enc.set_property("rdo-lookahead-frames", 2i32);
                     enc.set_property("max-key-frame-interval", frames_per_fragment);
                     enc.set_property("bitrate", self.bitrate as i32 / 1000i32);
                 }
