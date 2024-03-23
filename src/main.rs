@@ -183,8 +183,10 @@ fn main() -> Result<(), Error> {
                 codec: VideoCodec::AV1,
                 bitrate: 200_000,
                 level: "".to_string(),
-                width: 640,
-                height: 360,
+                // width: 640,
+                width: 256,
+                // height: 360,
+                height: 144,
             });
         } else {
             println!("Using single rendition AV1 encoding");
