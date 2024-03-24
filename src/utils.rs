@@ -31,6 +31,7 @@ pub(crate) fn probe_encoder(state: Arc<Mutex<State>>, enc: gst::Element, name: S
                             // Fallback to a default mime
                             mime = "av01.0.00M.08".into();
                         }
+                        mime = "av01.0.01M.08.0.111.01.01.01.0".into();
                     }
                     let mut state = state.lock().unwrap();
                     state.all_mimes.insert(name.to_string(), mime.into());
