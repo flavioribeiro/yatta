@@ -113,6 +113,16 @@ fn compute_av1_mime(codec_data: &[u8], colorimetry: Option<gst_video::VideoColor
     let monochrome = (codec_data[2] >> 4) & 0x01;
     let chroma_subsampling_x = (codec_data[2] >> 3) & 0x01;
     let chroma_subsampling_y = (codec_data[2] >> 2) & 0x01;
+    log::debug!(
+        "chroma_subsampling_x: {:08b} = {}",
+        codec_data[2],
+        chroma_subsampling_x
+    );
+    log::debug!(
+        "chroma_subsampling_y: {:08b} = {}",
+        codec_data[2],
+        chroma_subsampling_y
+    );
     let chroma_sample_position = if chroma_subsampling_x == 1 && chroma_subsampling_y == 1 {
         codec_data[2] & 0b011
     } else {
