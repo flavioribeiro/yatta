@@ -88,6 +88,12 @@ pub(crate) fn probe_encoder(state: Arc<Mutex<State>>, enc: gst::Element, name: S
 // https://aomediacodec.github.io/av1-spec/av1-spec.pdf - 5.5.2. Color config syntax
 fn compute_av1_mime(codec_data: &[u8], colorimetry: Option<gst_video::VideoColorimetry>) -> String {
     assert!(codec_data.len() >= 3);
+    log::debug!(
+        "codec_data: {:08b} {:08b} {:08b}",
+        codec_data[0],
+        codec_data[1],
+        codec_data[2]
+    );
     let seq_profile = (codec_data[1] >> 5) & 0b0111;
     let seq_level_idx_0 = codec_data[1] & 0b0001_1111;
     println!(
