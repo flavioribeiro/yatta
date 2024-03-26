@@ -7,6 +7,7 @@ use std::{process, thread};
 use crate::video::VideoCodec;
 use anyhow::Error;
 use clap::Parser;
+use gst::glib;
 use gst::prelude::*;
 use log::{info, warn};
 use m3u8_rs::{AlternativeMedia, AlternativeMediaType, MasterPlaylist, VariantStream};
@@ -387,7 +388,6 @@ fn main() -> Result<(), Error> {
             .name("video-head")
             .build()
             .unwrap();
-        // let video_scale = gst::ElementFactory::make("videoscale").build().unwrap();
         let video_rate = gst::ElementFactory::make("videorate").build().unwrap();
         let timecode = gst::ElementFactory::make("timecodestamper")
             .property_from_str("set", "keep")
@@ -417,7 +417,6 @@ fn main() -> Result<(), Error> {
             .add_many([
                 &uridecodebin,
                 &video_head,
-                // &video_scale,
                 &video_rate,
                 &timecode,
                 &timeoverlay,
@@ -429,7 +428,6 @@ fn main() -> Result<(), Error> {
             .unwrap();
         gst::Element::link_many(&[
             &video_head,
-            // &video_scale,
             &video_rate,
             &timecode,
             &timeoverlay,
@@ -534,49 +532,81 @@ fn main() -> Result<(), Error> {
         }
     });
 
-    for msg in bus.iter_timed(gst::ClockTime::NONE) {
-        use gst::MessageView;
+    let context = glib::MainContext::default();
+    let main_loop = glib::MainLoop::new(Some(&context), false);
 
-        match msg.view() {
-            MessageView::Eos(..) => {
-                println!("EOS");
-                break;
+    let hold = bus
+        .add_watch({
+            let main_loop = main_loop.clone();
+            let pipeline_weak = pipeline.downgrade();
+            move |_, msg| {
+                use gst::MessageView;
+                let main_loop = &main_loop;
+                match msg.view() {
+                    MessageView::Eos(..) => main_loop.quit(),
+                    MessageView::Element(e) => {
+                        log::debug!("message from: {}", e.src().unwrap().name());
+                        if e.src().map(|s| s.name()).map(|n| n.ends_with("multifilesink")).unwrap_or(false) {
+                            log::debug!("Some message from multifilesink");
+                            if let Some(structure) = e.structure() {
+                                if structure.name() == "GstMultiFileSink" {
+                                    // let mut state = state.lock().unwrap();
+
+                                    let raw_video = structure.get::<String>("filename").unwrap();
+                                    let timestamp = structure.get::<gst::ClockTime>("timestamp").unwrap();
+                                    let stream_time =
+                                        structure.get::<gst::ClockTime>("stream-time").unwrap();
+                                    let duration = structure.get::<gst::ClockTime>("duration").ok();
+                                    let running_time =
+                                        structure.get::<gst::ClockTime>("running-time").unwrap();
+
+                                    log::debug!("Got filename: {}, timestamp: {}, stream-time: {}, duration: {:?}, running-time: {}",
+                                    raw_video, timestamp.display(), stream_time.display(), duration.map(|v|v.display()), running_time.display());
+                                }
+                            }
+                        }
+                    }
+                    MessageView::Error(err) => {
+                        let pipeline = pipeline_weak.upgrade().unwrap();
+                        eprintln!(
+                            "Got error from {}: {} ({})",
+                            msg.src()
+                                .map(|s| String::from(s.path_string()))
+                                .unwrap_or_else(|| "None".into()),
+                            err.error(),
+                            err.debug().unwrap_or_else(|| "".into()),
+                        );
+                        let error_graph = server::dot_graph(&pipeline);
+                        let mut dot_cmd = process::Command::new("dot")
+                            .arg("-Tpng")
+                            .stdin(process::Stdio::piped())
+                            .stdout(process::Stdio::piped())
+                            .spawn()
+                            .expect("Failed to start dot command");
+                        dot_cmd
+                            .stdin
+                            .as_mut()
+                            .expect("Failed to open stdin")
+                            .write_all(error_graph.as_bytes())
+                            .expect("Failed to write to dot command");
+                        let res = dot_cmd
+                            .wait_with_output()
+                            .expect("Failed to wait for dot command");
+                        if res.status.success() {
+                            let error_file = format!("error_graph_{}.png", random::<u32>());
+                            std::fs::write(error_file, res.stdout).expect("Failed to write image");
+                        }
+                        pipeline.set_state(gst::State::Null).unwrap();
+                        main_loop.quit();
+                    }
+                    _ => (),
+                };
+                glib::ControlFlow::Continue
             }
-            MessageView::Error(err) => {
-                eprintln!(
-                    "Got error from {}: {} ({})",
-                    msg.src()
-                        .map(|s| String::from(s.path_string()))
-                        .unwrap_or_else(|| "None".into()),
-                    err.error(),
-                    err.debug().unwrap_or_else(|| "".into()),
-                );
-                let error_graph = server::dot_graph(&pipeline);
-                let mut dot_cmd = process::Command::new("dot")
-                    .arg("-Tpng")
-                    .stdin(process::Stdio::piped())
-                    .stdout(process::Stdio::piped())
-                    .spawn()
-                    .expect("Failed to start dot command");
-                dot_cmd
-                    .stdin
-                    .as_mut()
-                    .expect("Failed to open stdin")
-                    .write_all(error_graph.as_bytes())
-                    .expect("Failed to write to dot command");
-                let res = dot_cmd
-                    .wait_with_output()
-                    .expect("Failed to wait for dot command");
-                if res.status.success() {
-                    let error_file = format!("error_graph_{}.png", random::<u32>());
-                    std::fs::write(error_file, res.stdout).expect("Failed to write image");
-                }
-                pipeline.set_state(gst::State::Null)?;
-                break;
-            }
-            _ => (),
-        }
-    }
+        })
+        .expect("Failed to add bus watch");
+
+    main_loop.run();
 
     pipeline.set_state(gst::State::Null)?;
 

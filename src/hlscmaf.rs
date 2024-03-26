@@ -1,5 +1,6 @@
 use std::{
     collections::VecDeque,
+    env,
     path::PathBuf,
     sync::{Arc, Mutex},
 };
@@ -7,6 +8,7 @@ use std::{
 use crate::State;
 use anyhow::Error;
 use chrono::{DateTime, Duration, TimeDelta, Utc};
+use gst::glib;
 #[allow(unused_imports)]
 use gst::glib::bitflags::Flags;
 use gst::prelude::*;
@@ -38,6 +40,140 @@ struct Segment {
 struct UnreffedSegment {
     removal_time: DateTime<Utc>,
     path: String,
+}
+
+pub(crate) fn setup_raw_video_multifilesink(
+    pipeline: gst::Pipeline,
+    multifilesink: gst::Element,
+    global_state: Arc<Mutex<State>>,
+    name: &str,
+    path: &[String],
+) {
+    let mut path = path.to_vec();
+    path.push(name.to_string());
+
+    let state = Arc::new(Mutex::new(StreamState {
+        publisher: FilePublisher::new(&path),
+        stream_name: name.to_string(),
+        segments: VecDeque::new(),
+        trimmed_segments: VecDeque::new(),
+        path: path.clone(),
+        start_date_time: None,
+        start_time: gst::ClockTime::NONE,
+        media_sequence: 0,
+        segment_index: 0,
+    }));
+
+    std::thread::spawn(move || {
+        // temp file for the multifielsink
+        // let temp_dir = tempdir().unwrap();
+        let mut temp_dir = env::current_dir().unwrap();
+        temp_dir.push("mux_files");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        let file_template = format!("{}/segment_%05d.av1", temp_dir.as_path().display());
+
+        multifilesink.set_property("location", file_template);
+        multifilesink.set_property("max-files", 5u32);
+
+        // let bus = pipeline.bus().unwrap();
+        // // listen to messages from the multifilesink named `GstMultiFileSink`
+        // for msg in bus.iter_filtered(&[gst::MessageType::Element]) {
+        //     use gst::MessageView;
+        //     if let MessageView::Element(e) = msg.view() {
+        //         log::debug!("message from: {}", e.src().unwrap().name());
+        //         if e.src().map(|s| s) == Some(multifilesink.as_ref()) {
+        //             log::debug!("Some message from multifilesink");
+        //             if let Some(structure) = e.structure() {
+        //                 if structure.name() == "GstMultiFileSink" {
+        //                     // let mut state = state.lock().unwrap();
+        //
+        //                     let raw_video = structure.get::<String>("filename").unwrap();
+        //                     let timestamp = structure.get::<gst::ClockTime>("timestamp").unwrap();
+        //                     let stream_time =
+        //                         structure.get::<gst::ClockTime>("stream-time").unwrap();
+        //                     let duration = structure.get::<gst::ClockTime>("duration").ok();
+        //                     let running_time =
+        //                         structure.get::<gst::ClockTime>("running-time").unwrap();
+        //
+        //                     log::debug!("Got filename: {}, timestamp: {}, stream-time: {}, duration: {:?}, running-time: {}",
+        //                         raw_video, timestamp.display(), stream_time.display(), duration.map(|v|v.display()), running_time.display());
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
+
+        //
+        // let watch = bus.add_watch(move |_, msg| {
+        //     use gst::MessageView;
+        //     // if message error or end the thread
+        //     if msg.type_() == gst::MessageType::Error {
+        //         return glib::ControlFlow::Break;
+        //     } else if msg.type_() == gst::MessageType::Eos {
+        //         info!("End of stream from multifilesink");
+        //         return glib::ControlFlow::Break;
+        //     }
+        //
+        //     if let MessageView::Element(e) = msg.view() {
+        //         log::debug!("message from someone");
+        //         if e.src().map(|s| s) == Some(multifilesink.as_ref()) {
+        //             log::debug!("Some message from multifilesink");
+        //             if let Some(structure) = e.structure() {
+        //                 if structure.name() == "GstMultiFileSink" {
+        //                     let mut state = state.lock().unwrap();
+        //
+        //                     let raw_video = structure.get::<String>("filename").unwrap();
+        //                     let timestamp = structure.get::<gst::ClockTime>("timestamp").unwrap();
+        //                     let stream_time =
+        //                         structure.get::<gst::ClockTime>("stream-time").unwrap();
+        //                     let duration = structure.get::<gst::ClockTime>("duration").ok();
+        //                     let running_time =
+        //                         structure.get::<gst::ClockTime>("running-time").unwrap();
+        //
+        //                     log::debug!("Got filename: {}, timestamp: {}, stream-time: {}, duration: {:?}, running-time: {}",
+        //                         raw_video, timestamp.display(), stream_time.display(), duration.map(|v|v.display()), running_time.display());
+        //
+        //                     let mp4_segment = format!(
+        //                         "{}/{:05}.mp4",
+        //                         temp_dir.as_path().display(),
+        //                         state.segment_index
+        //                     );
+        //                     log::debug!("Multifilesink segment: {}", raw_video);
+        //
+        //                     state.segment_index += 1;
+        //
+        //                     let manifest =
+        //                         format!("{}/pkg/live.m3u8", temp_dir.as_path().display());
+        //                     let playlist =
+        //                         format!("{}/pkg/live_1.m3u8", temp_dir.as_path().display());
+        //                     let init_file =
+        //                         format!("{}/pkg/segmentinit.mp4", temp_dir.as_path().display());
+        //                     let fmpeg_segment =
+        //                         format!("{}/pkg/segment1.m4s", temp_dir.as_path().display());
+        //
+        //                     // Run subprocess to package segment
+        //                     // The command is `MP4Box -add segment_path segment_path.mp4`
+        //                     let output = std::process::Command::new("MP4Box")
+        //                         .arg("-add")
+        //                         .arg(&raw_video)
+        //                         .arg(&mp4_segment)
+        //                         .output()
+        //                         .unwrap();
+        //                     log::debug!("MP4Box output: {:?}", output);
+        //                     log::debug!("Wrote segment video as MP4 to {}", mp4_segment);
+        //                 }
+        //             }
+        //         }
+        //     }
+        //     glib::ControlFlow::Continue
+        // }).expect("Failed to add watch to bus");
+        //
+        loop {
+            // keep watch guard alive
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        }
+    });
 }
 
 pub(crate) fn setup_raw_video(

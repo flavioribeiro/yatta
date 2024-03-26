@@ -107,10 +107,17 @@ impl VideoStream {
         //     .property("write-mehd", true)
         //     .build()?
         // };
-        let appsink = gst_app::AppSink::builder()
-            .name(format!("{}-appsink", self.name))
-            .buffer_list(true)
-            .build();
+        // let appsink = gst_app::AppSink::builder()
+        //     .name(format!("{}-appsink", self.name))
+        //     .buffer_list(true)
+        //     .build();
+        let multifilesink = gst::ElementFactory::make("multifilesink")
+            .name(format!("{}-multifilesink", self.name))
+            .property("aggregate-gops", true)
+            // .property("max-file-duration", fragment_duration_nanos)
+            // .property_from_str("next-file", "key-frame")
+            .property("post-messages", true)
+            .build()?;
 
         pipeline.add_many([
             &queue,
@@ -120,10 +127,11 @@ impl VideoStream {
             &codec_burn_in,
             &videoconvert,
             &enc,
-            &parser,
+            // &parser,
             &capsfilter,
             // &mux,
-            appsink.upcast_ref(),
+            // appsink.upcast_ref(),
+            &multifilesink,
         ])?;
 
         src_pad
@@ -137,15 +145,23 @@ impl VideoStream {
             &codec_burn_in,
             &videoconvert,
             &enc,
-            &parser,
+            // &parser,
             &capsfilter,
             // &mux,
-            appsink.upcast_ref(),
+            // appsink.upcast_ref(),
+            &multifilesink,
         ])?;
 
         //utils::probe_encoder(Arc::clone(&state), parser, self.name.clone());
 
-        hlscmaf::setup_raw_video(&appsink, state, &self.name, path);
+        // hlscmaf::setup_raw_video(&appsink, state, &self.name, path);
+        hlscmaf::setup_raw_video_multifilesink(
+            pipeline.clone(),
+            multifilesink,
+            state,
+            &self.name,
+            path,
+        );
 
         Ok(())
     }
@@ -163,6 +179,7 @@ impl VideoStream {
             .seconds()
             .mul_div_ceil(frame_rate.numer() as u64, frame_rate.denom() as u64)
             .unwrap();
+        log::debug!("{} frames per fragment", frames_per_fragment);
 
         let enc_factory = match forced_encoder_factory_name {
             Some(enc) => gst::ElementFactory::find(enc)
@@ -243,7 +260,7 @@ impl VideoStream {
                 if enc_factory.name() == "rav1enc" {
                     enc.set_property("speed-preset", 10u32);
                     enc.set_property("low-latency", true);
-                    enc.set_property("error-resilient", true);
+                    // enc.set_property("error-resilient", true);
                     enc.set_property("threads", 10u32);
                     enc.set_property("rdo-lookahead-frames", 2i32);
                     enc.set_property("max-key-frame-interval", frames_per_fragment);
