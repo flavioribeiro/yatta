@@ -4,13 +4,15 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use crate::State;
 use anyhow::Error;
 use chrono::{DateTime, Duration, TimeDelta, Utc};
 #[allow(unused_imports)]
 use gst::glib::bitflags::Flags;
 use gst::prelude::*;
 use log::info;
-use m3u8_rs::{MediaPlaylist, MediaSegment};
+use m3u8_rs::{MediaPlaylist, MediaSegment, Playlist};
+use tempfile::tempdir;
 
 struct StreamState<P>
 where
@@ -36,6 +38,212 @@ struct Segment {
 struct UnreffedSegment {
     removal_time: DateTime<Utc>,
     path: String,
+}
+
+pub(crate) fn setup_raw_video(
+    appsink: &gst_app::AppSink,
+    global_state: Arc<Mutex<State>>,
+    name: &str,
+    path: &[String],
+) {
+    let mut path = path.to_vec();
+    path.push(name.to_string());
+
+    let state = Arc::new(Mutex::new(StreamState {
+        publisher: FilePublisher::new(&path),
+        stream_name: name.to_string(),
+        segments: VecDeque::new(),
+        trimmed_segments: VecDeque::new(),
+        path: path.clone(),
+        start_date_time: None,
+        start_time: gst::ClockTime::NONE,
+        media_sequence: 0,
+        segment_index: 0,
+    }));
+
+    let segment_buffers = Arc::new(Mutex::new(Vec::new()));
+    let first_pts = Arc::new(Mutex::new(None));
+    let name = Arc::new(name.to_string());
+
+    appsink.set_callbacks(
+        gst_app::AppSinkCallbacks::builder()
+            .new_sample({
+                move |sink| {
+                    let sample = sink.pull_sample().map_err(|_| gst::FlowError::Eos)?;
+                    let mut state = state.lock().unwrap();
+
+                    let buffer = sample.buffer_owned().expect("no buffer");
+                    if buffer.flags().contains(gst::BufferFlags::DELTA_UNIT) {
+                        // This is a delta frame
+                        // accumulate
+                        segment_buffers.lock().unwrap().push(buffer);
+                    } else {
+                        let mut first_pts = first_pts.lock().unwrap();
+                        let segment = sample
+                            .segment()
+                            .expect("no segment")
+                            .downcast_ref::<gst::ClockTime>()
+                            .expect("no time segment");
+                        // This is a keyframe
+                        // Write to file here
+                        let mut all_buffers = segment_buffers.lock().unwrap();
+                        if all_buffers.len() > 0 {
+                            let mut buffer_contents = Vec::new();
+                            for buffer in all_buffers.iter() {
+                                let map = buffer.map_readable().unwrap();
+                                buffer_contents.extend_from_slice(&map);
+                            }
+                            let pts = segment
+                                .to_running_time(first_pts.unwrap())
+                                .expect("can't get running time");
+
+                            if state.start_time.is_none() {
+                                state.start_time = Some(pts);
+                            }
+
+                            if state.start_date_time.is_none() {
+                                let now_utc = Utc::now();
+                                let now_gst = sink.clock().unwrap().time().unwrap();
+                                let pts_clock_time = pts + sink.base_time().unwrap();
+
+                                let diff = now_gst.checked_sub(pts_clock_time).unwrap();
+                                let pts_utc = now_utc
+                                    .checked_sub_signed(Duration::nanoseconds(
+                                        diff.nseconds() as i64
+                                    ))
+                                    .unwrap();
+
+                                state.start_date_time = Some(pts_utc);
+                            }
+
+                            // --------------------------
+
+                            let basename = format!("{:05}.mp4", state.segment_index);
+                            let raw_video = format!("{:05}.av1", state.segment_index);
+                            state.segment_index += 1;
+
+                            let temp_dir = tempdir().unwrap();
+                            let raw_video_path = temp_dir.path().join(raw_video.clone());
+
+                            std::fs::write(&raw_video_path, &buffer_contents).unwrap();
+                            log::debug!("Wrote segment video to {}", raw_video_path.display());
+
+                            let mp4_segment = format!("{}.mp4", raw_video_path.display());
+                            let manifest = format!("{}/pkg/live.m3u8", temp_dir.path().display());
+                            let playlist = format!("{}/pkg/live_1.m3u8", temp_dir.path().display());
+                            let init_file =
+                                format!("{}/pkg/segmentinit.mp4", temp_dir.path().display());
+                            let fmpeg_segment =
+                                format!("{}/pkg/segment1.m4s", temp_dir.path().display());
+
+                            // Run subprocess to package segment
+                            // The command is `MP4Box -add segment_path segment_path.mp4`
+                            let output = std::process::Command::new("MP4Box")
+                                .arg("-add")
+                                .arg(&raw_video_path)
+                                .arg(&mp4_segment)
+                                .output()
+                                .unwrap();
+                            log::debug!("MP4Box output: {:?}", output);
+                            // Now package the segment into a m3u8 file using MP4Box
+                            let output = std::process::Command::new("MP4Box")
+                                .arg("-strict-error")
+                                .arg("-old-arch")
+                                .arg("-noprog")
+                                .arg(&mp4_segment)
+                                .arg("-dash")
+                                .arg("2002") // 2 seconds in milliseconds
+                                .arg("-mvex-after-traks")
+                                .arg("-sdtp-traf")
+                                .arg("both")
+                                .arg("-single-traf")
+                                .arg("-no-frags-default")
+                                .arg("-tfdt-traf")
+                                .arg("-profile")
+                                .arg("live")
+                                .arg("-segment-name")
+                                .arg("segment$Number$$Init=init$")
+                                .arg("-tmp")
+                                .arg("output")
+                                .arg("-out")
+                                .arg(&manifest)
+                                .output()
+                                .unwrap();
+                            log::debug!("MP4Box output: {:?}", output);
+
+                            // publish init file
+                            let init_contents = std::fs::read(&init_file).unwrap();
+                            state
+                                .publisher
+                                .publish_header("init.mp4", &init_contents)
+                                .unwrap();
+
+                            // parse manifest
+                            let manifest = std::fs::read_to_string(&manifest).unwrap();
+                            match m3u8_rs::parse_playlist(manifest.as_bytes()).unwrap() {
+                                (_, Playlist::MasterPlaylist(master)) => {
+                                    let variant = master.variants.first().unwrap();
+                                    let codec = variant.codecs.as_ref().unwrap().to_owned();
+                                    log::debug!("Codecs for segment: {}", codec);
+                                    let mut global_state = global_state.lock().unwrap();
+                                    global_state.all_mimes.insert(name.to_string(), codec);
+                                    global_state.try_write_manifest();
+                                }
+                                (_, _) => unreachable!("Expected master playlist"),
+                            };
+
+                            // publish fmp4 segment
+                            let fmp4_contents = std::fs::read(&fmpeg_segment).unwrap();
+                            state
+                                .publisher
+                                .publish_segment(&basename.clone(), &fmp4_contents)
+                                .unwrap();
+
+                            let playlist = std::fs::read(&playlist).unwrap();
+                            match m3u8_rs::parse_playlist(playlist.as_slice()).unwrap() {
+                                (_, Playlist::MediaPlaylist(media)) => {
+                                    let segment = media.segments.first().unwrap();
+                                    // duration to u64 nano seconds
+                                    let duration = segment.duration as u64 * 1_000_000_000;
+                                    log::debug!("Segment duration: {}", duration);
+                                    // add segment to state
+                                    let date_time = state
+                                        .start_date_time
+                                        .unwrap()
+                                        .checked_add_signed(Duration::nanoseconds(
+                                            pts.opt_checked_sub(state.start_time)
+                                                .unwrap()
+                                                .unwrap()
+                                                .nseconds()
+                                                as i64,
+                                        ))
+                                        .unwrap();
+
+                                    state.segments.push_back(Segment {
+                                        duration: gst::ClockTime::from_nseconds(duration),
+                                        path: basename.to_string(),
+                                        date_time,
+                                    });
+                                }
+                                (_, _) => unreachable!("Expected media playlist"),
+                            };
+
+                            all_buffers.clear();
+                            update_manifest(&mut state);
+                        }
+
+                        *first_pts = buffer.pts();
+                        all_buffers.push(buffer);
+                    }
+
+                    Ok(gst::FlowSuccess::Ok)
+                }
+            })
+            .eos(move |_sink| {
+                unreachable!();
+            })
+            .build(),
+    );
 }
 
 pub(crate) fn setup(appsink: &gst_app::AppSink, name: &str, path: &[String]) {

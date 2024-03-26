@@ -20,6 +20,7 @@ gst-audio = { package = "gstreamer-audio", version = "0.22.0", features = ["v1_1
 gst-video = { package = "gstreamer-video", version = "0.22.1", features = ["v1_18"] }
 gst-pbutils = { package = "gstreamer-pbutils", version = "0.22.0", features = ["v1_20"] }
 env_logger = "0.11.3"
+tempfile = "3"
 log = "0.4.20"
 ctrlc = "3.2"
 tokio = { version = "1.17", features = ["full"] }
