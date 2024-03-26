@@ -96,6 +96,10 @@ fn compute_av1_mime(codec_data: &[u8], colorimetry: Option<gst_video::VideoColor
     );
     let seq_profile = (codec_data[1] >> 5) & 0b0111;
     let seq_level_idx_0 = codec_data[1] & 0b0001_1111;
+    let mut seq_level_idx_0 = codec_data[1] & 0b0001_1111;
+    if seq_level_idx_0 == 31 {
+        seq_level_idx_0 = 1;
+    }
     println!(
         "seq_level_idx_0: {:08b} = {}",
         codec_data[1], seq_level_idx_0
